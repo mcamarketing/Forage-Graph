@@ -48,10 +48,27 @@ class KnowledgeGraph {
     const url = process.env.FALKORDB_URL || process.env.REDIS_URL || 'redis://localhost:6379';
     console.log('Connecting to FalkorDB at:', url);
     
-    this.client = createClient({ url });
+    try {
+      const parsed = new URL(url);
+      console.log('URL parsed - Protocol:', parsed.protocol, 'Host:', parsed.hostname, 'Port:', parsed.port);
+    } catch (e) {
+      console.error('Invalid URL format:', url);
+    }
+    
+    this.client = createClient({ 
+      url,
+      socket: {
+        reconnectStrategy: (retries) => {
+          console.log(`Reconnect attempt ${retries}`);
+          return Math.min(retries * 50, 500);
+        },
+        connectTimeout: 10000,
+      }
+    });
     
     this.client.on('error', (err) => {
       console.error('KV error:', err.message || err);
+      console.error('Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
     });
     
     this.client.on('connect', () => {
@@ -71,8 +88,11 @@ class KnowledgeGraph {
     try {
       await this.client.connect();
       console.log('FalkorDB connected successfully');
+      const ping = await this.client.ping();
+      console.log('Ping result:', ping);
     } catch (err: any) {
       console.error('Failed to connect to FalkorDB:', err.message || err);
+      console.error('Connection error stack:', err.stack);
       throw err;
     }
 
@@ -94,8 +114,6 @@ class KnowledgeGraph {
   // ─── INDEXES ──────────────────────────────────────────────────────────────────
 
   private async ensureIndexes(): Promise<void> {
-    // FalkorDB uses RedisGraph — no manual indexes needed for now
-    // But we could add Redis Search indexes here if needed
     console.log('Indexes ensured');
   }
 
@@ -113,7 +131,6 @@ class KnowledgeGraph {
     const id = this.entityId(name, type);
     const now = new Date().toISOString();
 
-    // Check if exists
     const exists = await this.client.hGetAll(`entity:${id}`);
     const isNew = Object.keys(exists).length === 0;
 
@@ -129,7 +146,6 @@ class KnowledgeGraph {
       last_seen: now,
     };
 
-    // Save to Redis Hash
     await this.client.hSet(`entity:${id}`, {
       name: entity.name,
       type: entity.type,
@@ -141,10 +157,7 @@ class KnowledgeGraph {
       last_seen: entity.last_seen,
     });
 
-    // Add to type index
     await this.client.sAdd(`index:type:${type}`, id);
-    
-    // Add to name index (lowercase for search)
     await this.client.sAdd(`index:name:${name.toLowerCase()}`, id);
 
     console.log(`Upserted ${type}: ${name} (calls: ${entity.call_count})`);
@@ -156,11 +169,9 @@ class KnowledgeGraph {
 
     const ids = new Set<string>();
 
-    // Search by name index
     const nameIds = await this.client.sMembers(`index:name:${name.toLowerCase()}`);
     nameIds.forEach(id => ids.add(id));
 
-    // If type specified, intersect
     if (type) {
       const typeIds = await this.client.sMembers(`index:type:${type}`);
       const typeSet = new Set(typeIds);
@@ -169,7 +180,6 @@ class KnowledgeGraph {
       }
     }
 
-    // Fetch full entities
     const entities: Entity[] = [];
     for (const id of ids) {
       const data = await this.client.hGetAll(`entity:${id}`);
@@ -184,10 +194,8 @@ class KnowledgeGraph {
   async enrich(identifier: string): Promise<{ entity: Entity | null; related: Record<string, Entity[]>; confidence: number }> {
     if (!this.client) throw new Error('KnowledgeGraph not initialized');
 
-    // Try exact match first
     let entity = await this.findEntity(identifier);
     
-    // If no exact match, try domain extraction
     if (entity.length === 0 && identifier.includes('.')) {
       const domain = identifier.toLowerCase().replace(/^www\./, '').split('/')[0];
       entity = await this.findEntity(domain);
@@ -200,7 +208,6 @@ class KnowledgeGraph {
     const main = entity[0];
     const related: Record<string, Entity[]> = {};
 
-    // Find all relationships where this entity is source or target
     const relIds = await this.client.sMembers(`rel:from:${main.id}`);
     const relIdsTo = await this.client.sMembers(`rel:to:${main.id}`);
     
@@ -223,7 +230,6 @@ class KnowledgeGraph {
       }
     }
 
-    // Calculate overall confidence based on relationship density
     const relCount = allRelIds.length;
     const confidence = Math.min(0.3 + (relCount * 0.1), 1.0);
 
@@ -233,11 +239,9 @@ class KnowledgeGraph {
   async findConnections(from: string, to: string, maxHops: number = 3): Promise<{ hops: number; path: Entity[]; edges: Relationship[] } | null> {
     if (!this.client) throw new Error('KnowledgeGraph not initialized');
 
-    // BFS to find shortest path
     const queue: Array<{ id: string; hops: number; path: string[]; edges: string[] }> = [];
     const visited = new Set<string>();
 
-    // Find start entity
     const fromEntities = await this.findEntity(from);
     if (fromEntities.length === 0) return null;
     
@@ -253,7 +257,6 @@ class KnowledgeGraph {
       const current = queue.shift()!;
       
       if (current.id === targetId) {
-        // Found path — hydrate and return
         const path: Entity[] = [];
         for (const id of current.path) {
           const data = await this.client.hGetAll(`entity:${id}`);
@@ -275,7 +278,6 @@ class KnowledgeGraph {
 
       if (current.hops >= maxHops) continue;
 
-      // Get neighbors
       const neighbors = await this.client.sMembers(`rel:from:${current.id}`);
       for (const relId of neighbors) {
         const relData = await this.client.hGetAll(`relationship:${relId}`);
@@ -300,14 +302,12 @@ class KnowledgeGraph {
   async findByIndustryAndLocation(industry: string, location?: string): Promise<Entity[]> {
     if (!this.client) throw new Error('KnowledgeGraph not initialized');
 
-    // Find all companies in industry
     const industryEntities = await this.findEntity(industry, 'industry');
     if (industryEntities.length === 0) return [];
 
     const results: Entity[] = [];
     
     for (const ind of industryEntities) {
-      // Find relationships from this industry to companies
       const relIds = await this.client.sMembers(`rel:from:${ind.id}`);
       
       for (const relId of relIds) {
@@ -317,7 +317,6 @@ class KnowledgeGraph {
           if (Object.keys(companyData).length > 0) {
             const company = this.hydrateEntity(relData.to_id, companyData);
             
-            // If location specified, check match
             if (location) {
               const companyLoc = company.properties.location || company.properties.city || company.properties.country || '';
               if (companyLoc.toLowerCase().includes(location.toLowerCase())) {
@@ -333,8 +332,6 @@ class KnowledgeGraph {
 
     return results.sort((a, b) => b.confidence - a.confidence);
   }
-
-  // ─── RELATIONSHIP OPERATIONS ─────────────────────────────────────────────────
 
   async addRelationship(
     from: Entity,
@@ -359,10 +356,8 @@ class KnowledgeGraph {
       last_seen: now,
     };
 
-    // Check if exists
     const exists = await this.client.hGetAll(`relationship:${id}`);
     if (Object.keys(exists).length > 0) {
-      // Update last_seen and confidence
       rel.first_seen = exists.first_seen || now;
       rel.confidence = Math.max(parseFloat(exists.confidence || '0'), confidence);
     }
@@ -378,7 +373,6 @@ class KnowledgeGraph {
       last_seen: rel.last_seen,
     });
 
-    // Add to indexes
     await this.client.sAdd(`rel:from:${from.id}`, id);
     await this.client.sAdd(`rel:to:${to.id}`, id);
     await this.client.sAdd(`rel:type:${relation}`, id);
@@ -386,8 +380,6 @@ class KnowledgeGraph {
     console.log(`Relationship: ${from.name} ${relation} ${to.name}`);
     return rel;
   }
-
-  // ─── INGESTION ────────────────────────────────────────────────────────────────
 
   async ingest(toolName: string, result: any): Promise<void> {
     if (!this.client) {
@@ -398,23 +390,19 @@ class KnowledgeGraph {
     console.log(`Ingesting from ${toolName}...`);
 
     try {
-      // Extract entities based on tool type
       const entities = this.extractEntities(toolName, result);
       
-      // Save entities and create relationships
       const savedEntities: Entity[] = [];
       for (const e of entities) {
         const saved = await this.upsertEntity(e.name, e.type, e.properties, toolName, e.confidence);
         savedEntities.push(saved);
       }
 
-      // Create relationships between entities from same call
       for (let i = 0; i < savedEntities.length; i++) {
         for (let j = i + 1; j < savedEntities.length; j++) {
           const a = savedEntities[i];
           const b = savedEntities[j];
           
-          // Determine relationship type
           let relation = 'related_to';
           if (a.type === 'company' && b.type === 'person') relation = 'employs';
           if (a.type === 'person' && b.type === 'company') relation = 'works_at';
@@ -438,7 +426,6 @@ class KnowledgeGraph {
 
     if (!result) return entities;
 
-    // Handle different tool result formats
     if (toolName === 'find_leads' || toolName === 'get_company_info') {
       if (result.company || result.name) {
         const company = result.company || result;
@@ -496,7 +483,6 @@ class KnowledgeGraph {
       }
     }
 
-    // Extract industries mentioned
     const industries = this.extractIndustries(result);
     for (const ind of industries) {
       entities.push({
@@ -527,8 +513,6 @@ class KnowledgeGraph {
     return [...new Set(industries)];
   }
 
-  // ─── STATS ────────────────────────────────────────────────────────────────────
-
   async getStats(): Promise<{
     total_nodes: number;
     total_edges: number;
@@ -556,8 +540,6 @@ class KnowledgeGraph {
       last_updated: new Date().toISOString(),
     };
   }
-
-  // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
   private entityId(name: string, type: EntityType): string {
     return `${type}:${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
@@ -591,7 +573,5 @@ class KnowledgeGraph {
     };
   }
 }
-
-// ─── SINGLETON ─────────────────────────────────────────────────────────────────
 
 export const knowledgeGraph = new KnowledgeGraph();
