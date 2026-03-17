@@ -7,10 +7,13 @@
  *
  * Endpoints:
  *   POST /ingest              — receive tool output, extract entities, merge into graph
+ *   POST /ingest_raw          — directly insert structured entities with explicit relationships
  *   POST /query               — find entities by name
- *   POST /enrich              — everything the graph knows about a domain/company
+ *   POST /enrich              — everything the graph knows about an entity (incl. causal paths)
  *   POST /connections         — find relationship path between two entities
  *   POST /search              — find companies by industry and optional location
+ *   POST /browse              — list all entities of a given type
+ *   POST /browse_country      — list all entities associated with a country
  *   GET  /stats               — graph size and coverage
  *   GET  /health              — liveness check
  *
@@ -207,8 +210,11 @@ app.post('/enrich', async (req: Request, res: Response) => {
         call_count: result.entity.call_count,
         first_seen: result.entity.first_seen,
         last_seen: result.entity.last_seen,
+        valid_from: result.entity.valid_from,
+        valid_until: result.entity.valid_until,
         properties: result.entity.properties,
         sources: result.entity.sources,
+        provenance: result.entity.provenance,
       },
       relationships: Object.fromEntries(
         Object.entries(result.related).map(([relation, nodes]) => [
@@ -216,6 +222,12 @@ app.post('/enrich', async (req: Request, res: Response) => {
           nodes.map(n => ({ name: n.name, type: n.type, confidence: n.confidence })),
         ])
       ),
+      causal_paths: result.causal_paths.map(cp => ({
+        relation: cp.relation,
+        entity: { name: cp.entity.name, type: cp.entity.type },
+        causal_weight: cp.causal_weight,
+        mechanism: cp.mechanism,
+      })),
       confidence: result.confidence,
     });
   } catch (err: any) {
@@ -262,6 +274,10 @@ app.post('/connections', async (req: Request, res: Response) => {
         relation: e.relation,
         to: e.to_name,
         confidence: e.confidence,
+        causal_weight: e.causal_weight,
+        mechanism: e.mechanism,
+        valid_from: e.valid_from,
+        valid_until: e.valid_until,
       })),
     });
   } catch (err: any) {
@@ -309,6 +325,121 @@ app.post('/search', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[Search Error]', err);
     res.status(500).json({ error: 'Internal server error during search operation' });
+  }
+});
+
+// ─── BROWSE BY TYPE ─────────────────────────────────────────────────────────
+// List all entities of a given type (company, country, person, conflict_event, etc.)
+//
+// Body: { type: EntityType, limit?: number }
+
+app.post('/browse', async (req: Request, res: Response) => {
+  try {
+    const { type, limit } = req.body;
+
+    if (!type || typeof type !== 'string') {
+      res.status(400).json({ error: 'type is required and must be a string' });
+      return;
+    }
+
+    const entities = await knowledgeGraph.findByType(type as any, typeof limit === 'number' ? limit : 100);
+
+    res.json({
+      type,
+      count: entities.length,
+      entities: entities.map(e => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        confidence: e.confidence,
+        properties: e.properties,
+        provenance: e.provenance,
+        valid_from: e.valid_from,
+        valid_until: e.valid_until,
+        last_seen: e.last_seen,
+      })),
+    });
+  } catch (err: any) {
+    console.error('[Browse Error]', err);
+    res.status(500).json({ error: 'Internal server error during browse operation' });
+  }
+});
+
+// ─── BROWSE BY COUNTRY ────────────────────────────────────────────────────────
+// List all entities associated with a country code.
+//
+// Body: { country: string, type?: EntityType }
+
+app.post('/browse_country', async (req: Request, res: Response) => {
+  try {
+    const { country, type } = req.body;
+
+    if (!country || typeof country !== 'string') {
+      res.status(400).json({ error: 'country is required and must be a string' });
+      return;
+    }
+
+    const entities = await knowledgeGraph.findByCountry(country, type as any);
+
+    res.json({
+      country,
+      type: type || 'any',
+      count: entities.length,
+      entities: entities.map(e => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        confidence: e.confidence,
+        properties: e.properties,
+        last_seen: e.last_seen,
+      })),
+    });
+  } catch (err: any) {
+    console.error('[Browse Country Error]', err);
+    res.status(500).json({ error: 'Internal server error during browse_country operation' });
+  }
+});
+
+// ─── INGEST RAW ───────────────────────────────────────────────────────────────
+// Directly insert a structured entity with explicit relationships.
+// Used by external data loaders: Wikidata, GLEIF, ACLED, UN Comtrade, etc.
+//
+// Body: { name, type, properties, relationships: [{targetName, targetType, relation, ...}], source, confidence? }
+
+app.post('/ingest_raw', async (req: Request, res: Response) => {
+  try {
+    const { name, type, properties, relationships, source, confidence } = req.body;
+
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required and must be a string' });
+      return;
+    }
+    if (!type || typeof type !== 'string') {
+      res.status(400).json({ error: 'type is required and must be a string' });
+      return;
+    }
+    if (!source || typeof source !== 'string') {
+      res.status(400).json({ error: 'source is required and must be a string' });
+      return;
+    }
+
+    const entity = await knowledgeGraph.ingestRaw(
+      name,
+      type as any,
+      properties || {},
+      Array.isArray(relationships) ? relationships : [],
+      source,
+      typeof confidence === 'number' ? confidence : 0.8
+    );
+
+    res.status(201).json({
+      accepted: true,
+      entity: { id: entity.id, name: entity.name, type: entity.type },
+      relationships_created: Array.isArray(relationships) ? relationships.length : 0,
+    });
+  } catch (err: any) {
+    console.error('[Ingest Raw Error]', err);
+    res.status(500).json({ error: 'Internal server error during ingest_raw operation' });
   }
 });
 
