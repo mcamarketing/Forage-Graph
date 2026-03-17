@@ -340,26 +340,9 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // ─── START ────────────────────────────────────────────────────────────────────
 
 async function start() {
-  let retries = 0;
-  const maxRetries = 10;
-  
-  while (retries < maxRetries) {
-    try {
-      await knowledgeGraph.init();
-      console.log('FalkorDB initialized successfully');
-      break; // Success
-    } catch (err) {
-      retries++;
-      if (retries >= maxRetries) {
-        console.error('CRITICAL: Failed to init FalkorDB after', maxRetries, 'retries:', err);
-        process.exit(1);
-      }
-      const delay = Math.min(1000 * Math.pow(2, retries), 10000);
-      console.log(`Init failed (attempt ${retries}/${maxRetries}), retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-
+  // Start HTTP server FIRST so Railway's health check can reach /health immediately.
+  // The /health endpoint returns 503 while the DB is still connecting, which is
+  // correct — Railway will keep retrying until it gets a 200.
   const server = app.listen(PORT, () => {
     console.log(`Forage Graph API running on port ${PORT}`);
     console.log(`Health: http://localhost:${PORT}/health`);
@@ -389,6 +372,28 @@ async function start() {
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+
+  // Connect to DB in the background with exponential backoff.
+  // The server stays alive throughout — /health returns 503 until connected.
+  let retries = 0;
+  const maxRetries = 10;
+
+  while (retries < maxRetries) {
+    try {
+      await knowledgeGraph.init();
+      console.log('FalkorDB initialized successfully');
+      break;
+    } catch (err) {
+      retries++;
+      if (retries >= maxRetries) {
+        console.error('CRITICAL: Failed to init FalkorDB after', maxRetries, 'retries. Server remains up but unhealthy.');
+        break;
+      }
+      const delay = Math.min(1000 * Math.pow(2, retries), 10000);
+      console.log(`Init failed (attempt ${retries}/${maxRetries}), retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
 }
 
 start().catch(err => {
