@@ -2,7 +2,7 @@
   "name": "Forage Graph \u2014 Master Intelligence Feeds",
   "nodes": [
     {
-      "id": "e5d59bf2-9932-4833-9460-e956876cc687",
+      "id": "7ec42da2-9528-4596-9c52-ea4769a04523",
       "name": "Run Every 6 Hours",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "ad6d33d6-6098-4578-8db9-7f1e9aa7ae9e",
+      "id": "f5eded62-ab6d-43f7-a674-f1acb2cc9231",
       "name": "RSS 1: BBC World News",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -39,7 +39,7 @@
       }
     },
     {
-      "id": "f702b922-a094-4fbd-9aac-1f13ec6301b3",
+      "id": "c484749f-4fe8-408a-a09e-c4bcdade607f",
       "name": "Tag 1: BBC World News",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -49,11 +49,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"BBC World\";\nconst cat=\"world_news\";\nconst cw=0.4;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"BBC World\";\nconst cat=\"world_news\";\nconst cw=0.4;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "5a68ff5e-4133-4b4d-b464-090544f01a8c",
+      "id": "49b2b813-a145-4f89-afd4-4f6f75f333f8",
       "name": "RSS 2: Reuters Top News",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "id": "9c82a701-6a15-4e33-8651-57b27a9a4a94",
+      "id": "fe3c67dd-d6a3-485d-83e6-7482b3899c55",
       "name": "Tag 2: Reuters Top News",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -80,11 +80,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Reuters\";\nconst cat=\"world_news\";\nconst cw=0.5;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Reuters\";\nconst cat=\"world_news\";\nconst cw=0.5;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "323f379c-000f-4c80-954d-a9f2f0be5b7b",
+      "id": "f025561e-3618-407e-b626-1a24eacea466",
       "name": "RSS 3: The Guardian World",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -101,7 +101,7 @@
       }
     },
     {
-      "id": "03d9f8cb-a229-4522-b68a-f1204c58cebb",
+      "id": "b144ca45-be97-4717-aa5c-05a781f063c2",
       "name": "Tag 3: The Guardian World",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -111,11 +111,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Guardian\";\nconst cat=\"world_news\";\nconst cw=0.4;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Guardian\";\nconst cat=\"world_news\";\nconst cw=0.4;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "eb818057-2a43-47b9-a07d-d894680fe5b3",
+      "id": "b0901bf1-71e4-4470-b699-660bd8158535",
       "name": "RSS 4: Sky News World",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -132,7 +132,7 @@
       }
     },
     {
-      "id": "c28d5491-2743-4088-8d8c-b91b077bfc0a",
+      "id": "c22e4278-623f-498c-820f-7720bb4fa092",
       "name": "Tag 4: Sky News World",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -142,11 +142,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Sky News\";\nconst cat=\"world_news\";\nconst cw=0.3;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Sky News\";\nconst cat=\"world_news\";\nconst cw=0.3;\nconst mech=\"news_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "0e642873-9906-47ba-addf-42f875f78400",
+      "id": "50faa86c-1de0-4121-a0ad-94ce9048dff6",
       "name": "RSS 5: Foreign Policy",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -163,7 +163,7 @@
       }
     },
     {
-      "id": "b6bb52ee-b555-4545-a5cf-d1b9a6bbd461",
+      "id": "18a18695-6564-47ae-9343-484626002194",
       "name": "Tag 5: Foreign Policy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -173,11 +173,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Foreign Policy\";\nconst cat=\"geopolitics\";\nconst cw=0.6;\nconst mech=\"geopolitical_analysis\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Foreign Policy\";\nconst cat=\"geopolitics\";\nconst cw=0.6;\nconst mech=\"geopolitical_analysis\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "134111af-68c1-4141-b625-8ca7cc6a34e4",
+      "id": "d9205114-7446-4671-908a-123530747e77",
       "name": "RSS 6: Foreign Affairs",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -194,7 +194,7 @@
       }
     },
     {
-      "id": "1c9c657c-61a2-4852-b66d-fc7a660f3b00",
+      "id": "483c8790-8006-4470-bddb-b0c5c787c95a",
       "name": "Tag 6: Foreign Affairs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -204,11 +204,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Foreign Affairs\";\nconst cat=\"geopolitics\";\nconst cw=0.7;\nconst mech=\"geopolitical_analysis\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Foreign Affairs\";\nconst cat=\"geopolitics\";\nconst cw=0.7;\nconst mech=\"geopolitical_analysis\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "17f2124a-50b5-466e-89e0-7843ce8ce730",
+      "id": "67aba116-1044-4430-996d-180f4eabf451",
       "name": "RSS 7: TechCrunch",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -225,7 +225,7 @@
       }
     },
     {
-      "id": "d0bdc7d3-3d64-4d88-b4c6-cca001257aee",
+      "id": "53247eaf-c3ec-4b4c-a824-db74ee1fe3f4",
       "name": "Tag 7: TechCrunch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -235,11 +235,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"TechCrunch\";\nconst cat=\"technology\";\nconst cw=0.4;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"TechCrunch\";\nconst cat=\"technology\";\nconst cw=0.4;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "53b437d0-ff1c-4ab6-95fd-ee0de270955c",
+      "id": "b8d13a17-da35-4423-b842-26019bde0fba",
       "name": "RSS 8: TechCrunch Startups",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -256,7 +256,7 @@
       }
     },
     {
-      "id": "f6d0fbdd-aa82-4b60-8af9-98ced03007b7",
+      "id": "d15e387a-5d56-4812-8a00-9abde36030ec",
       "name": "Tag 8: TechCrunch Startups",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -266,11 +266,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"TechCrunch Startups\";\nconst cat=\"startups\";\nconst cw=0.5;\nconst mech=\"startup_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"TechCrunch Startups\";\nconst cat=\"startups\";\nconst cw=0.5;\nconst mech=\"startup_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "9c23a70b-f40c-42e6-bd3b-3c1a5b23efd9",
+      "id": "7f584f73-c614-4e79-9c2c-d5f3f9963511",
       "name": "RSS 9: TechCrunch Funding",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -287,7 +287,7 @@
       }
     },
     {
-      "id": "809b3e09-a360-407c-9b7a-d5ec379338eb",
+      "id": "998c2382-530d-4b9a-9c0d-be8d3b6785ac",
       "name": "Tag 9: TechCrunch Funding",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -297,11 +297,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"TechCrunch Funding\";\nconst cat=\"venture_capital\";\nconst cw=0.7;\nconst mech=\"funding_event\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"TechCrunch Funding\";\nconst cat=\"venture_capital\";\nconst cw=0.7;\nconst mech=\"funding_event\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "77914f76-7149-4393-b68f-4c5ca1d152cb",
+      "id": "b913942e-8ec0-4b93-8aad-6a0996cdd5c6",
       "name": "RSS 10: Wired",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -318,7 +318,7 @@
       }
     },
     {
-      "id": "a50895e8-5563-4b1e-a1e7-1368b61ac47b",
+      "id": "3daf7f5e-a625-410d-a96d-8797100598d3",
       "name": "Tag 10: Wired",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -328,11 +328,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Wired\";\nconst cat=\"technology\";\nconst cw=0.3;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Wired\";\nconst cat=\"technology\";\nconst cw=0.3;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "6d93ac47-3671-4115-a6ee-a80a6a202233",
+      "id": "77a3631d-f61f-44dc-b091-615c04b6d53b",
       "name": "RSS 11: Ars Technica",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -349,7 +349,7 @@
       }
     },
     {
-      "id": "2cb05ac0-725f-4f77-804a-73ff13244719",
+      "id": "ef681491-01db-497e-b3ed-2dbceeb3fdaa",
       "name": "Tag 11: Ars Technica",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -359,11 +359,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Ars Technica\";\nconst cat=\"technology\";\nconst cw=0.3;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Ars Technica\";\nconst cat=\"technology\";\nconst cw=0.3;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "0a730731-fd50-4100-b9f7-c8f60ced7dc8",
+      "id": "de1773fc-6153-40e1-9600-cbf37604728f",
       "name": "RSS 12: MIT Tech Review",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -380,7 +380,7 @@
       }
     },
     {
-      "id": "e7d221eb-80a1-4c6a-8dbb-6e3af275dce6",
+      "id": "b2d11539-daff-484e-9519-ee8322793928",
       "name": "Tag 12: MIT Tech Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -390,11 +390,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"MIT Tech Review\";\nconst cat=\"ai\";\nconst cw=0.5;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"MIT Tech Review\";\nconst cat=\"ai\";\nconst cw=0.5;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "dd9cbeeb-5844-4fcf-9e4a-005035d42edf",
+      "id": "9737b852-3be2-4690-9811-919100044270",
       "name": "RSS 13: VentureBeat",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -411,7 +411,7 @@
       }
     },
     {
-      "id": "54ed96c1-a3bb-4562-a88a-a40bc4e1067f",
+      "id": "472b98cf-9045-481e-a311-51f8d3d3171d",
       "name": "Tag 13: VentureBeat",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -421,11 +421,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"VentureBeat\";\nconst cat=\"ai\";\nconst cw=0.4;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"VentureBeat\";\nconst cat=\"ai\";\nconst cw=0.4;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "34aa4fed-916c-4340-86e9-4bb109e589fc",
+      "id": "117bd326-16d9-4c3a-a745-475881541d55",
       "name": "RSS 14: The Verge",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -442,7 +442,7 @@
       }
     },
     {
-      "id": "6cc4d2a6-0fc1-4e4a-a66d-d5487debb45f",
+      "id": "6a5b0574-87ad-4602-bbcc-ec64eede862b",
       "name": "Tag 14: The Verge",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -452,11 +452,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"The Verge\";\nconst cat=\"technology\";\nconst cw=0.3;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"The Verge\";\nconst cat=\"technology\";\nconst cw=0.3;\nconst mech=\"tech_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "deef8fc7-c6d3-4f23-8dbc-06f2ec0b6437",
+      "id": "03a15df6-6a5a-4633-a217-a189f4abcc5c",
       "name": "RSS 15: Fortune",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -473,7 +473,7 @@
       }
     },
     {
-      "id": "1f3c56d9-2e17-4b76-a2ba-385cb2bb4c3b",
+      "id": "55e552c7-86c2-4768-b2c8-4f8500b2071c",
       "name": "Tag 15: Fortune",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -483,11 +483,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Fortune\";\nconst cat=\"business\";\nconst cw=0.4;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Fortune\";\nconst cat=\"business\";\nconst cw=0.4;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "3a9668cb-6b08-4b24-9d01-164d7cc984a1",
+      "id": "7fd8f66c-c4d9-4b2b-a1c0-d6bb66222df8",
       "name": "RSS 16: Economist Finance",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -504,7 +504,7 @@
       }
     },
     {
-      "id": "84a4b498-3203-4fce-9189-eea27c164d80",
+      "id": "23bb718e-3061-47e0-9142-930a2dc02f09",
       "name": "Tag 16: Economist Finance",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -514,11 +514,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Economist Finance\";\nconst cat=\"economics\";\nconst cw=0.6;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Economist Finance\";\nconst cat=\"economics\";\nconst cw=0.6;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "bb030d40-a627-480e-bd75-31595fe690fe",
+      "id": "a41b4dce-26f7-4a6d-9e9e-feebbd3cec79",
       "name": "RSS 17: The Economist",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -535,7 +535,7 @@
       }
     },
     {
-      "id": "8615dfac-35ed-4213-872a-0c06a144c173",
+      "id": "97b66394-200d-4380-a6de-66aa34c8ccd3",
       "name": "Tag 17: The Economist",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -545,11 +545,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"The Economist\";\nconst cat=\"economics\";\nconst cw=0.6;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"The Economist\";\nconst cat=\"economics\";\nconst cw=0.6;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "45938b4d-7af7-4ced-9a6b-e2ec461aacd8",
+      "id": "0b2a2fa2-f681-43fc-9126-42b0989c1c37",
       "name": "RSS 18: Inc Magazine",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -566,7 +566,7 @@
       }
     },
     {
-      "id": "76037241-b9a9-4704-93bc-064e804c40db",
+      "id": "e9881b9a-fa8a-4c99-aa6f-aac521d305bd",
       "name": "Tag 18: Inc Magazine",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -576,11 +576,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Inc Magazine\";\nconst cat=\"business\";\nconst cw=0.3;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Inc Magazine\";\nconst cat=\"business\";\nconst cw=0.3;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "1a2d6be2-0b9a-4872-b9bc-4391927e8d93",
+      "id": "fc460f49-8929-432f-9ffc-197c4e2ddd78",
       "name": "RSS 19: Forbes Business",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -597,7 +597,7 @@
       }
     },
     {
-      "id": "51f72ec5-09e5-4a42-aa89-8ed07cd815b5",
+      "id": "f3491286-411d-4f20-9645-31c5c59cbba3",
       "name": "Tag 19: Forbes Business",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -607,11 +607,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Forbes Business\";\nconst cat=\"business\";\nconst cw=0.4;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Forbes Business\";\nconst cat=\"business\";\nconst cw=0.4;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "a62bffae-f254-4950-a655-b15f353a8cb1",
+      "id": "7da9422b-a408-4be5-8a8d-f3baa4c4f506",
       "name": "RSS 20: Business Insider Tech",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -628,7 +628,7 @@
       }
     },
     {
-      "id": "13db6490-8e4d-4de7-b2b6-1cfab646e613",
+      "id": "43ba1e75-1d09-4e18-8c64-69f3d5cf1457",
       "name": "Tag 20: Business Insider Tech",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -638,11 +638,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Business Insider\";\nconst cat=\"business\";\nconst cw=0.3;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Business Insider\";\nconst cat=\"business\";\nconst cw=0.3;\nconst mech=\"business_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "19ecaef4-feae-4525-893d-063e52ebfa48",
+      "id": "99a2ec2a-44fb-4b6f-9663-1d625aafaec9",
       "name": "RSS 21: BLS Price Indicators",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -659,7 +659,7 @@
       }
     },
     {
-      "id": "175b4337-a33a-4beb-b621-c01dbc4e4c5d",
+      "id": "7eca026a-ae0d-49e1-b880-e0e12fb41dc5",
       "name": "Tag 21: BLS Price Indicators",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -669,11 +669,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"BLS Indicators\";\nconst cat=\"economics\";\nconst cw=0.7;\nconst mech=\"macro_indicator\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"BLS Indicators\";\nconst cat=\"economics\";\nconst cw=0.7;\nconst mech=\"macro_indicator\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "b8b429b1-4861-4fc0-b48a-ef529372cd42",
+      "id": "5d003551-e963-441a-b1ab-76419b970986",
       "name": "RSS 22: BLS JOLTS",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -690,7 +690,7 @@
       }
     },
     {
-      "id": "41c76e80-10ed-4176-85f6-a07583b0cdb4",
+      "id": "2f6e5e6d-fd83-471d-8501-5854068bd53c",
       "name": "Tag 22: BLS JOLTS",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -700,11 +700,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"BLS JOLTS\";\nconst cat=\"hiring\";\nconst cw=0.6;\nconst mech=\"labour_market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"BLS JOLTS\";\nconst cat=\"hiring\";\nconst cw=0.6;\nconst mech=\"labour_market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "e3c54dfb-a2a9-43b8-8bcd-4a9d8a3b3412",
+      "id": "bb67e5ea-d015-4f8c-8617-cd6d4dc4f084",
       "name": "RSS 23: BLS CPI",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -721,7 +721,7 @@
       }
     },
     {
-      "id": "8dad8e83-fe52-4851-acd5-266deba493e8",
+      "id": "256010e3-c7fd-449f-9c52-23c183cf5d86",
       "name": "Tag 23: BLS CPI",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -731,11 +731,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"BLS CPI\";\nconst cat=\"consumer\";\nconst cw=0.8;\nconst mech=\"inflation_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"BLS CPI\";\nconst cat=\"consumer\";\nconst cw=0.8;\nconst mech=\"inflation_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "a50a38f7-c36d-402c-91bf-bce29688b15c",
+      "id": "3af4dde6-5d31-485d-bd99-f8d4a0d79a6e",
       "name": "RSS 24: Federal Reserve",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -752,7 +752,7 @@
       }
     },
     {
-      "id": "112a27f7-aff5-4eb2-b987-f86f08b76ba1",
+      "id": "c243f8b4-2f14-4d76-a50e-e35109cf6de5",
       "name": "Tag 24: Federal Reserve",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -762,11 +762,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Federal Reserve\";\nconst cat=\"economics\";\nconst cw=0.9;\nconst mech=\"monetary_policy\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Federal Reserve\";\nconst cat=\"economics\";\nconst cw=0.9;\nconst mech=\"monetary_policy\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "88c44e79-baf4-44ec-a24a-e1115a60ca18",
+      "id": "a64713db-7457-42e7-ade9-a1e46959feee",
       "name": "RSS 25: ECB",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -783,7 +783,7 @@
       }
     },
     {
-      "id": "bf1cfeb2-3360-4563-814b-bd3739c31e27",
+      "id": "d42f3e6f-99f6-4f95-beeb-5d649f7c108f",
       "name": "Tag 25: ECB",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -793,11 +793,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"ECB\";\nconst cat=\"economics\";\nconst cw=0.9;\nconst mech=\"monetary_policy\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"ECB\";\nconst cat=\"economics\";\nconst cw=0.9;\nconst mech=\"monetary_policy\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "b63c703b-322f-4329-962b-b056cad4e8d9",
+      "id": "f8653883-1946-43a6-be5f-07a61bdb502b",
       "name": "RSS 26: Marginal Revolution",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -814,7 +814,7 @@
       }
     },
     {
-      "id": "2cc89d13-9409-443a-8d8d-b44c8b5a2beb",
+      "id": "bedccd5f-a0bd-421d-ade7-96f75f38c654",
       "name": "Tag 26: Marginal Revolution",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -824,11 +824,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Marginal Revolution\";\nconst cat=\"economics\";\nconst cw=0.4;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Marginal Revolution\";\nconst cat=\"economics\";\nconst cw=0.4;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "3b011b37-96e2-48e1-a848-f53aba52b8b8",
+      "id": "8e1379c9-3be7-4a79-8b33-154bcf8bb4d8",
       "name": "RSS 27: Project Syndicate",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -845,7 +845,7 @@
       }
     },
     {
-      "id": "6b1de565-b2e6-4695-ba0c-e2ea96269dd9",
+      "id": "30b15e2d-09f1-43d0-91d4-4e48349ff826",
       "name": "Tag 27: Project Syndicate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -855,11 +855,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Project Syndicate\";\nconst cat=\"economics\";\nconst cw=0.5;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Project Syndicate\";\nconst cat=\"economics\";\nconst cw=0.5;\nconst mech=\"macro_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "3c246541-63a8-41cd-971c-ee9c5d429644",
+      "id": "b3d8960b-c11b-447a-938e-451936babe69",
       "name": "RSS 28: Federal Register",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -876,7 +876,7 @@
       }
     },
     {
-      "id": "9021f282-1e7d-4802-ba36-ac321d3b2ea3",
+      "id": "12de4efb-2585-433b-b46a-b58c0e4d5129",
       "name": "Tag 28: Federal Register",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -886,11 +886,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Federal Register\";\nconst cat=\"regulation\";\nconst cw=0.7;\nconst mech=\"regulatory_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Federal Register\";\nconst cat=\"regulation\";\nconst cw=0.7;\nconst mech=\"regulatory_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "bbbd61e2-2f17-4b70-b6bd-077eaa247858",
+      "id": "14c6be3e-211c-4cdf-bc78-876f1f189f46",
       "name": "RSS 29: UK Legislation",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -907,7 +907,7 @@
       }
     },
     {
-      "id": "eeee0fae-51f3-4f0e-9203-170272e340f6",
+      "id": "e618dfb3-a8d8-474e-b573-97da9e1f762d",
       "name": "Tag 29: UK Legislation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -917,11 +917,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"UK Legislation\";\nconst cat=\"law\";\nconst cw=0.7;\nconst mech=\"regulatory_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"UK Legislation\";\nconst cat=\"law\";\nconst cw=0.7;\nconst mech=\"regulatory_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "d1983433-54f7-45a2-9b5c-8bfe3db61ed9",
+      "id": "f3825a97-2be8-4fb8-9621-ebebb97a057a",
       "name": "RSS 30: EUR-Lex",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -938,7 +938,7 @@
       }
     },
     {
-      "id": "7a420ccb-9489-40a9-92b3-f54668dc1ae7",
+      "id": "5a9684f6-e105-4035-b760-f19af91f4f4d",
       "name": "Tag 30: EUR-Lex",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -948,11 +948,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"EUR-Lex\";\nconst cat=\"regulation\";\nconst cw=0.7;\nconst mech=\"regulatory_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"EUR-Lex\";\nconst cat=\"regulation\";\nconst cw=0.7;\nconst mech=\"regulatory_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "2d704f9e-41af-4469-84ec-a0f860a306f6",
+      "id": "a26c4532-6c65-44ea-b1d9-9ff7dd46a877",
       "name": "RSS 31: DataBreaches.net",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -969,7 +969,7 @@
       }
     },
     {
-      "id": "394c05a3-3f7a-4ebc-ada7-54749ebcc7f3",
+      "id": "98e3f134-d49a-418e-aaf6-d98a855c24f3",
       "name": "Tag 31: DataBreaches.net",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -979,11 +979,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"DataBreaches.net\";\nconst cat=\"cybersecurity\";\nconst cw=0.6;\nconst mech=\"cyber_threat\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"DataBreaches.net\";\nconst cat=\"cybersecurity\";\nconst cw=0.6;\nconst mech=\"cyber_threat\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "7ea79a3f-d85e-4fa4-a658-c0bac612ed4f",
+      "id": "2ff0f2a5-a31d-4c51-9c7b-30ecdf6c336f",
       "name": "RSS 32: UpGuard Breaches",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1000,7 +1000,7 @@
       }
     },
     {
-      "id": "f23df5e8-2eb5-4a46-ae5e-4b004ede7f07",
+      "id": "3e6c748b-b5da-49cd-84c8-315b51b7affd",
       "name": "Tag 32: UpGuard Breaches",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1010,11 +1010,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"UpGuard\";\nconst cat=\"cybersecurity\";\nconst cw=0.6;\nconst mech=\"cyber_threat\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"UpGuard\";\nconst cat=\"cybersecurity\";\nconst cw=0.6;\nconst mech=\"cyber_threat\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "7be8af53-f691-4b7c-9e62-994a73d8c96d",
+      "id": "8d59d3e2-2a56-4c1a-be02-8173efadf550",
       "name": "RSS 33: Cooley M&A",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1031,7 +1031,7 @@
       }
     },
     {
-      "id": "6e4d6e4d-f812-461e-8fb4-6062ee7ce555",
+      "id": "d5a88621-6e69-46ed-ab68-f920f2bc5e1b",
       "name": "Tag 33: Cooley M&A",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1041,11 +1041,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Cooley M&A\";\nconst cat=\"mergers_acquisitions\";\nconst cw=0.8;\nconst mech=\"ma_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Cooley M&A\";\nconst cat=\"mergers_acquisitions\";\nconst cw=0.8;\nconst mech=\"ma_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "e38da23f-340f-40ae-9403-c7f5ca5e77a4",
+      "id": "75a081f8-9127-4862-9efd-641019fb3af7",
       "name": "RSS 34: DealRoom",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1062,7 +1062,7 @@
       }
     },
     {
-      "id": "0b9a65fa-66d8-4a19-904b-31f6ca9321ef",
+      "id": "00c1bdd1-4b61-44ae-a84e-09c08fb30ac1",
       "name": "Tag 34: DealRoom",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1072,11 +1072,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"DealRoom\";\nconst cat=\"mergers_acquisitions\";\nconst cw=0.8;\nconst mech=\"ma_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"DealRoom\";\nconst cat=\"mergers_acquisitions\";\nconst cw=0.8;\nconst mech=\"ma_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "6e44e37b-88fa-4ed9-bc7a-6a05b3018615",
+      "id": "c459bf40-be84-412d-b16f-43dcdffd0078",
       "name": "RSS 35: arXiv CS",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1093,7 +1093,7 @@
       }
     },
     {
-      "id": "8c2f01ac-2da9-4767-b966-9ef54c989c8a",
+      "id": "9de9684d-1fc5-44d7-80f6-524306a9eee3",
       "name": "Tag 35: arXiv CS",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1103,11 +1103,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"arXiv CS\";\nconst cat=\"research\";\nconst cw=0.4;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"arXiv CS\";\nconst cat=\"research\";\nconst cw=0.4;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "dae15f36-4e26-4ed9-9d1c-f2478494714a",
+      "id": "8737afb2-c139-4f7b-8a62-26c1616ffc94",
       "name": "RSS 36: arXiv Economics",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1124,7 +1124,7 @@
       }
     },
     {
-      "id": "615f6891-d8d7-471b-803a-88068318ce46",
+      "id": "9a3f7f9f-e32a-4c93-9097-f8885474b450",
       "name": "Tag 36: arXiv Economics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1134,11 +1134,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"arXiv Economics\";\nconst cat=\"research\";\nconst cw=0.4;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"arXiv Economics\";\nconst cat=\"research\";\nconst cw=0.4;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "6c74157c-3187-49f6-83f7-928dbb15433c",
+      "id": "f3205498-1661-497a-a23f-aad4e8dba955",
       "name": "RSS 37: arXiv ML",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1155,7 +1155,7 @@
       }
     },
     {
-      "id": "22c3b6d2-a83c-446b-9bc0-8e1e9cd7c031",
+      "id": "4d434150-dcf9-4216-8475-17d8e2c27ba2",
       "name": "Tag 37: arXiv ML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1165,11 +1165,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"arXiv ML\";\nconst cat=\"ai\";\nconst cw=0.5;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"arXiv ML\";\nconst cat=\"ai\";\nconst cw=0.5;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "d1c3948e-7c31-4291-b4dc-fc2ecfc60796",
+      "id": "8cd11027-ac54-4870-b4e0-61fb0d981b60",
       "name": "RSS 38: arXiv Biology",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1186,7 +1186,7 @@
       }
     },
     {
-      "id": "cb087a1e-18ca-4f9f-9a80-d42db0028693",
+      "id": "c93969a8-b372-4523-87e5-eed5e8d75bc3",
       "name": "Tag 38: arXiv Biology",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1196,11 +1196,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"arXiv Biology\";\nconst cat=\"biotech\";\nconst cw=0.4;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"arXiv Biology\";\nconst cat=\"biotech\";\nconst cw=0.4;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "b5d130f4-92ba-4e3f-b561-4d4ec9d1e27c",
+      "id": "32dc78d1-d1ab-4732-ad4d-7b809d91d3c7",
       "name": "RSS 39: HubSpot Marketing",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1217,7 +1217,7 @@
       }
     },
     {
-      "id": "3eeab5ee-77d5-49af-b390-2b247d855909",
+      "id": "fcd5af32-20bb-4965-88e2-c6686930ccda",
       "name": "Tag 39: HubSpot Marketing",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1227,11 +1227,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"HubSpot Marketing\";\nconst cat=\"marketing\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"HubSpot Marketing\";\nconst cat=\"marketing\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "92c5e953-868f-4ddb-bb79-8eca273bfeba",
+      "id": "2d1e0624-bf94-48e7-818f-96138d54c0e0",
       "name": "RSS 40: HubSpot Sales",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1248,7 +1248,7 @@
       }
     },
     {
-      "id": "fbd389b7-ff6b-4178-9075-60ba873e735f",
+      "id": "77798b1c-c767-49b1-b50c-876a82d72183",
       "name": "Tag 40: HubSpot Sales",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1258,11 +1258,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"HubSpot Sales\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"HubSpot Sales\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "b056f5c6-03bd-4bc1-8103-4af37a008071",
+      "id": "7a3bbf41-42df-4a13-b47e-2080290d48b0",
       "name": "RSS 41: Neil Patel",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1279,7 +1279,7 @@
       }
     },
     {
-      "id": "18eaa83e-f8fb-4cd1-bfc5-0aafec3f820c",
+      "id": "e52c1a55-2162-4ab9-bc06-7779be4ff826",
       "name": "Tag 41: Neil Patel",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1289,11 +1289,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Neil Patel\";\nconst cat=\"marketing\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Neil Patel\";\nconst cat=\"marketing\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "95a209e5-0318-4359-9bc8-91850e7d075d",
+      "id": "0e3a326e-d9a1-4dca-9562-a1bcf8a4742f",
       "name": "RSS 42: Sales Hacker",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1310,7 +1310,7 @@
       }
     },
     {
-      "id": "406b34ff-56ca-4f39-af84-d25887e6a1de",
+      "id": "4c20770d-51e7-48bf-9580-34394006b183",
       "name": "Tag 42: Sales Hacker",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1320,11 +1320,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Sales Hacker\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Sales Hacker\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "4cd723a7-4cf2-464b-b59d-3df1383ddd3e",
+      "id": "cc26babb-9953-43aa-a0dc-49f28b88cf56",
       "name": "RSS 43: Gong Blog",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1341,7 +1341,7 @@
       }
     },
     {
-      "id": "09c398cc-d683-4c36-8758-fff770a0baca",
+      "id": "472a1fb5-b911-4f33-8b3d-ac977a779a71",
       "name": "Tag 43: Gong Blog",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1351,11 +1351,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Gong\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Gong\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "140b4ae1-942f-4b1d-a335-bebaaf19d293",
+      "id": "ba1b1c34-c338-4ce3-baa9-01e98b599433",
       "name": "RSS 44: Close CRM Blog",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1372,7 +1372,7 @@
       }
     },
     {
-      "id": "d252c082-cdf4-4a22-94d5-f02604fd03b9",
+      "id": "00e74bba-904c-421a-858e-d592ad023e8a",
       "name": "Tag 44: Close CRM Blog",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1382,11 +1382,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Close CRM\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Close CRM\";\nconst cat=\"sales\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "75d1edd1-78bb-4b07-9134-5431b289a49d",
+      "id": "afe0d033-8e04-458d-bf4e-2d58cb3a41ee",
       "name": "RSS 45: Psychology Today",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1403,7 +1403,7 @@
       }
     },
     {
-      "id": "75f9b859-b4cf-4b9f-8a75-c989325bfb89",
+      "id": "79ba4944-5dc2-4de7-a44b-bea644095b07",
       "name": "Tag 45: Psychology Today",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1413,11 +1413,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Psychology Today\";\nconst cat=\"psychology\";\nconst cw=0.2;\nconst mech=\"social_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Psychology Today\";\nconst cat=\"psychology\";\nconst cw=0.2;\nconst mech=\"social_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "2fb1a858-507e-4c6c-9bdb-cd1225101448",
+      "id": "2b5a7a99-fb9c-43a2-9e84-c60ca564b20a",
       "name": "RSS 46: Behavioral Scientist",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1434,7 +1434,7 @@
       }
     },
     {
-      "id": "1a6fdd82-4486-4084-8850-d2b66fcf7f0c",
+      "id": "cf142a1a-b2b3-4b22-8452-ce1e627dfa17",
       "name": "Tag 46: Behavioral Scientist",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1444,11 +1444,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Behavioral Scientist\";\nconst cat=\"psychology\";\nconst cw=0.3;\nconst mech=\"social_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Behavioral Scientist\";\nconst cat=\"psychology\";\nconst cw=0.3;\nconst mech=\"social_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "bfd7c901-128c-4900-9206-49c123563089",
+      "id": "247b23ff-f0f1-4dea-9ef9-bf5f9b3642d2",
       "name": "RSS 47: Scientific American",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1465,7 +1465,7 @@
       }
     },
     {
-      "id": "2031f988-2593-43f6-b15c-64b18495d09f",
+      "id": "b80e41c6-3303-4ed7-8985-631c7cd72a9b",
       "name": "Tag 47: Scientific American",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1475,11 +1475,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Scientific American\";\nconst cat=\"science\";\nconst cw=0.3;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Scientific American\";\nconst cat=\"science\";\nconst cw=0.3;\nconst mech=\"research_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "a4833df8-fa2f-414f-9fa8-c1a70a4a7167",
+      "id": "4dceb785-e994-42ed-acbb-e153cc73d0db",
       "name": "RSS 48: Crunchbase News",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1496,7 +1496,7 @@
       }
     },
     {
-      "id": "8811564d-9c48-4651-991f-8b2f23618e8b",
+      "id": "07f41505-c90c-4660-aa28-7ed9f3045f25",
       "name": "Tag 48: Crunchbase News",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1506,11 +1506,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Crunchbase News\";\nconst cat=\"venture_capital\";\nconst cw=0.7;\nconst mech=\"funding_event\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Crunchbase News\";\nconst cat=\"venture_capital\";\nconst cw=0.7;\nconst mech=\"funding_event\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "c6601f10-c96b-4afc-b2bb-3466edfe0242",
+      "id": "1c251494-a5b1-4f98-a067-dcd1c0497c0a",
       "name": "RSS 49: a16z Blog",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1527,7 +1527,7 @@
       }
     },
     {
-      "id": "b0d9f885-c22b-4eb5-836a-11c305980864",
+      "id": "c949745e-6c8d-4836-acfb-7d7050a11abf",
       "name": "Tag 49: a16z Blog",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1537,11 +1537,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"a16z\";\nconst cat=\"venture_capital\";\nconst cw=0.6;\nconst mech=\"funding_event\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"a16z\";\nconst cat=\"venture_capital\";\nconst cw=0.6;\nconst mech=\"funding_event\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "31a6487e-66f9-4fc2-ba3f-dd58e67609f8",
+      "id": "958c9752-c43a-4626-8eba-4686e70b6a4f",
       "name": "RSS 50: Y Combinator Blog",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1558,7 +1558,7 @@
       }
     },
     {
-      "id": "dec5ac75-5237-4e83-98d4-6c81451aa053",
+      "id": "701f0770-2241-4445-ab76-e6efc628d60f",
       "name": "Tag 50: Y Combinator Blog",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1568,11 +1568,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Y Combinator\";\nconst cat=\"startups\";\nconst cw=0.7;\nconst mech=\"startup_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Y Combinator\";\nconst cat=\"startups\";\nconst cw=0.7;\nconst mech=\"startup_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "f9103504-11d1-43bd-a334-fa7b46b6899d",
+      "id": "f7661e7b-fd42-44d7-9830-5b4bd0ffafa5",
       "name": "RSS 51: MIT Sloan Review",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1589,7 +1589,7 @@
       }
     },
     {
-      "id": "a09bff7f-f7a4-4868-adc6-b091db17e1b4",
+      "id": "3e24dcbf-0918-471a-93bd-50c03a51ab52",
       "name": "Tag 51: MIT Sloan Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1599,11 +1599,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"MIT Sloan\";\nconst cat=\"management\";\nconst cw=0.3;\nconst mech=\"management_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"MIT Sloan\";\nconst cat=\"management\";\nconst cw=0.3;\nconst mech=\"management_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "44d76b45-8faf-4582-bb14-13ccb1464f74",
+      "id": "2d6861b2-af8f-45b3-8f74-89fa218812b8",
       "name": "RSS 52: McKinsey Insights",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1620,7 +1620,7 @@
       }
     },
     {
-      "id": "a1a71351-3d17-4644-bc5e-6fd7aa40433d",
+      "id": "f3b06dba-510f-421e-af30-69e420514118",
       "name": "Tag 52: McKinsey Insights",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1630,11 +1630,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"McKinsey\";\nconst cat=\"management\";\nconst cw=0.4;\nconst mech=\"management_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"McKinsey\";\nconst cat=\"management\";\nconst cw=0.4;\nconst mech=\"management_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "e15e6da6-7da0-46ac-b13f-6a522bd39baa",
+      "id": "94064781-be07-4e5c-b7b3-ee75011a0f88",
       "name": "RSS 53: OPEC",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1651,7 +1651,7 @@
       }
     },
     {
-      "id": "7d8bec5d-b3eb-45c0-b0e5-eefa2763775d",
+      "id": "7f89ff1e-d6de-44ce-869d-883a4171b501",
       "name": "Tag 53: OPEC",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1661,11 +1661,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"OPEC\";\nconst cat=\"energy\";\nconst cw=0.8;\nconst mech=\"energy_supply_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"OPEC\";\nconst cat=\"energy\";\nconst cw=0.8;\nconst mech=\"energy_supply_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "0008104f-8e79-4a68-9749-e2076d82cdb6",
+      "id": "cd3d10ca-2933-4e7b-b495-1359926f8eb7",
       "name": "RSS 54: Responsible Investor",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1682,7 +1682,7 @@
       }
     },
     {
-      "id": "697a1685-8906-4403-ad95-9f4f149e58e8",
+      "id": "1f0bd095-860d-40f5-9529-95d8c6b7c6a2",
       "name": "Tag 54: Responsible Investor",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1692,11 +1692,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Responsible Investor\";\nconst cat=\"esg\";\nconst cw=0.4;\nconst mech=\"esg_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Responsible Investor\";\nconst cat=\"esg\";\nconst cw=0.4;\nconst mech=\"esg_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "af7f44e1-0154-4f18-ad95-47b4fb034c27",
+      "id": "d9914832-8240-4915-8b31-62572637b1bd",
       "name": "RSS 55: CoinTelegraph",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1713,7 +1713,7 @@
       }
     },
     {
-      "id": "5630f00f-a529-4ca6-a805-9dbd94f1d12a",
+      "id": "6011ea26-2e69-4e3e-bf22-6b250325b89f",
       "name": "Tag 55: CoinTelegraph",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1723,11 +1723,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"CoinTelegraph\";\nconst cat=\"crypto\";\nconst cw=0.5;\nconst mech=\"crypto_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"CoinTelegraph\";\nconst cat=\"crypto\";\nconst cw=0.5;\nconst mech=\"crypto_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "6432676c-af13-4078-b435-db4d6f6ea2c5",
+      "id": "35bee060-a84e-4962-b0d1-52c827bfd6f0",
       "name": "RSS 56: Supply Chain Digital",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1744,7 +1744,7 @@
       }
     },
     {
-      "id": "a0390c6f-ff61-4034-8cf1-5029ad254287",
+      "id": "baa4047b-5df9-422f-a5ce-25219fb4c54b",
       "name": "Tag 56: Supply Chain Digital",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1754,11 +1754,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Supply Chain Digital\";\nconst cat=\"supply_chain\";\nconst cw=0.6;\nconst mech=\"supply_chain_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Supply Chain Digital\";\nconst cat=\"supply_chain\";\nconst cw=0.6;\nconst mech=\"supply_chain_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "649fb001-1f4a-45d9-9634-88fc6faefcfe",
+      "id": "1d927349-392a-40ec-8046-67b45adfbc01",
       "name": "RSS 57: Hootsuite Blog",
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1,
@@ -1775,7 +1775,7 @@
       }
     },
     {
-      "id": "4450c2ad-01cb-4419-b06c-7c30104cd0e0",
+      "id": "f2e35e72-ba04-4bd8-b185-a0120e710a46",
       "name": "Tag 57: Hootsuite Blog",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1785,11 +1785,11 @@
       ],
       "continueOnFail": true,
       "parameters": {
-        "jsCode": "const src=\"Hootsuite\";\nconst cat=\"marketing\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => ({json:{...i.json,source:src,category:cat,causal_weight:cw,mechanism:mech}}));"
+        "jsCode": "const src=\"Hootsuite\";\nconst cat=\"marketing\";\nconst cw=0.2;\nconst mech=\"market_signal\";\nreturn $input.all().map(i => {\n  const base = (i.json && typeof i.json === 'object') ? i.json : {};\n  return {json:{...base,source:src,category:cat,causal_weight:cw,mechanism:mech}};\n});"
       }
     },
     {
-      "id": "a30b4d12-b973-422e-b2fb-d9734a9c0e3a",
+      "id": "9a81ccbd-8081-4379-94a5-adc7f56bcb14",
       "name": "Merge All Feeds",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
@@ -1802,7 +1802,7 @@
       }
     },
     {
-      "id": "ecd58a2f-dcbb-419b-9263-7033807dd5e7",
+      "id": "15fb494e-2769-4355-acdb-0f762e5481e9",
       "name": "Normalize to Graph Entities",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1811,11 +1811,11 @@
         1330
       ],
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\nconst TYPE_MAP = {\n  world_news: 'political_event', geopolitics: 'political_event',\n  technology: 'technology', ai: 'technology', biotech: 'technology',\n  research: 'technology', science: 'technology',\n  startups: 'company', venture_capital: 'company', business: 'company',\n  marketing: 'company', sales: 'company', management: 'company',\n  economics: 'economic_event', hiring: 'economic_event', consumer: 'economic_event',\n  mergers_acquisitions: 'economic_event', esg: 'economic_event',\n  regulation: 'government_body', law: 'government_body',\n  cybersecurity: 'conflict_event',\n  energy: 'commodity_flow',\n  crypto: 'financial_instrument',\n  supply_chain: 'supply_chain',\n  psychology: 'social_movement',\n};\n\nfunction extractMentions(text) {\n  const matches = text.match(/\\b([A-Z][a-z]+(?: [A-Z][a-z]+){1,3})\\b/g) || [];\n  return [...new Set(matches)].slice(0, 4);\n}\n\nfor (const item of items) {\n  const a = item.json;\n  if (!a || !a.title || !a.source) continue;\n\n  const title = String(a.title).trim().substring(0, 200);\n  const category = a.category || 'world_news';\n  const source = a.source;\n  const url = a.link || a.url || '';\n  const published = a.pubDate || a.isoDate || new Date().toISOString();\n  const causal_weight = typeof a.causal_weight === 'number' ? a.causal_weight : 0.3;\n  const mechanism = a.mechanism || 'news_signal';\n\n  const description = String(a.content || a.contentSnippet || a.summary || '')\n    .replace(/<[^>]*>/g, '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"')\n    .substring(0, 600);\n\n  const entityType = TYPE_MAP[category] || 'political_event';\n\n  const relationships = [{\n    targetName: source,\n    targetType: 'company',\n    targetProperties: { domain: 'media', category },\n    relation: 'cited_by',\n    confidence: 0.9,\n    causal_weight: 0.1,\n    mechanism: 'media_attribution'\n  }];\n\n  const mentions = extractMentions(title + ' ' + description.substring(0, 200));\n  for (const mention of mentions) {\n    relationships.push({\n      targetName: mention,\n      targetType: 'person',\n      relation: 'related_to',\n      confidence: 0.4,\n      causal_weight: causal_weight * 0.5,\n      mechanism\n    });\n  }\n\n  results.push({ json: {\n    name: title,\n    type: entityType,\n    properties: { url, description: description.substring(0, 500), category, published },\n    relationships,\n    source,\n    confidence: 0.7,\n    causal_weight,\n    mechanism\n  }});\n}\n\nreturn results.length > 0 ? results : [{ json: null }];"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nconst TYPE_MAP = {\n  world_news: 'political_event', geopolitics: 'political_event',\n  technology: 'technology', ai: 'technology', biotech: 'technology',\n  research: 'technology', science: 'technology',\n  startups: 'company', venture_capital: 'company', business: 'company',\n  marketing: 'company', sales: 'company', management: 'company',\n  economics: 'economic_event', hiring: 'economic_event', consumer: 'economic_event',\n  mergers_acquisitions: 'economic_event', esg: 'economic_event',\n  regulation: 'government_body', law: 'government_body',\n  cybersecurity: 'conflict_event',\n  energy: 'commodity_flow',\n  crypto: 'financial_instrument',\n  supply_chain: 'supply_chain',\n  psychology: 'social_movement',\n};\n\nfunction extractMentions(text) {\n  const matches = text.match(/\\b([A-Z][a-z]+(?: [A-Z][a-z]+){1,3})\\b/g) || [];\n  return [...new Set(matches)].slice(0, 4);\n}\n\nfor (const item of items) {\n  const a = item.json;\n  if (!a || !a.title || !a.source) continue;\n\n  const title = String(a.title).trim().substring(0, 200);\n  const category = a.category || 'world_news';\n  const source = a.source;\n  const url = a.link || a.url || '';\n  const published = a.pubDate || a.isoDate || new Date().toISOString();\n  const causal_weight = typeof a.causal_weight === 'number' ? a.causal_weight : 0.3;\n  const mechanism = a.mechanism || 'news_signal';\n\n  const description = String(a.content || a.contentSnippet || a.summary || '')\n    .replace(/<[^>]*>/g, '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"')\n    .substring(0, 600);\n\n  const entityType = TYPE_MAP[category] || 'political_event';\n\n  const relationships = [{\n    targetName: source,\n    targetType: 'company',\n    targetProperties: { domain: 'media', category },\n    relation: 'cited_by',\n    confidence: 0.9,\n    causal_weight: 0.1,\n    mechanism: 'media_attribution'\n  }];\n\n  const mentions = extractMentions(title + ' ' + description.substring(0, 200));\n  for (const mention of mentions) {\n    relationships.push({\n      targetName: mention,\n      targetType: 'person',\n      relation: 'related_to',\n      confidence: 0.4,\n      causal_weight: causal_weight * 0.5,\n      mechanism\n    });\n  }\n\n  results.push({ json: {\n    name: title,\n    type: entityType,\n    properties: { url, description: description.substring(0, 500), category, published },\n    relationships,\n    source,\n    confidence: 0.7,\n    causal_weight,\n    mechanism\n  }});\n}\n\n// Always return at least one valid item \u2014 never return null as json value\nreturn results.length > 0 ? results : [{ json: { _empty: true, name: 'empty', type: 'political_event', source: 'system', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];"
       }
     },
     {
-      "id": "6fe2b9b5-fde9-40f1-b450-42febb3b112e",
+      "id": "2971a3cf-5b43-4e65-928c-4618aa74de6e",
       "name": "Batch 25 Items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1824,11 +1824,11 @@
         1330
       ],
       "parameters": {
-        "jsCode": "const items = $input.all().filter(i => i.json !== null && i.json !== undefined);\nconst BATCH_SIZE = 25;\nconst batches = [];\nfor (let i = 0; i < items.length; i += BATCH_SIZE) {\n  batches.push({ json: { batch: items.slice(i, i + BATCH_SIZE).map(x => x.json) } });\n}\nreturn batches.length > 0 ? batches : [{ json: { batch: [] } }];"
+        "jsCode": "const items = $input.all().filter(i => i.json && typeof i.json === 'object' && !i.json._empty);\nconst BATCH_SIZE = 25;\nconst batches = [];\nfor (let i = 0; i < items.length; i += BATCH_SIZE) {\n  batches.push({ json: { batch: items.slice(i, i + BATCH_SIZE).map(x => x.json) } });\n}\nreturn batches.length > 0 ? batches : [{ json: { batch: [] } }];"
       }
     },
     {
-      "id": "624917c4-05dd-4790-83b2-8946637b17b2",
+      "id": "6595a026-d180-4062-9320-b545f8d3d44a",
       "name": "POST Batch to Graph",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1867,7 +1867,7 @@
       }
     },
     {
-      "id": "65abddf5-e34d-43f0-9ece-740d33c64dcb",
+      "id": "8ca2fdc0-2683-4c3a-a6fe-2736e83b6a23",
       "name": "Log Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3476,7 +3476,7 @@
     "saveManualExecutions": true,
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "ecf1fcc8-b6ea-40b8-913c-8cab385b6868",
+  "versionId": "938852dd-9da0-434e-a30a-cae62f14c5a0",
   "meta": {
     "templateCredsSetupCompleted": true
   }
