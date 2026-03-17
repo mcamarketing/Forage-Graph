@@ -10,6 +10,7 @@
  *   POST /query               — find entities by name
  *   POST /enrich              — everything the graph knows about a domain/company
  *   POST /connections         — find relationship path between two entities
+ *   POST /search              — find companies by industry and optional location
  *   GET  /stats               — graph size and coverage
  *   GET  /health              — liveness check
  *
@@ -19,48 +20,86 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import { knowledgeGraph } from './knowledge-graph.js';
+import helmet from 'helmet';
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.GRAPH_API_SECRET;
 
 if (!SECRET) {
-  console.error('GRAPH_API_SECRET env var is required');
+  console.error('CRITICAL: GRAPH_API_SECRET env var is required for authentication.');
   process.exit(1);
 }
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 
+// Security headers
+app.use(helmet());
+
+// Body parser with size limit
 app.use(express.json({ limit: '10mb' }));
 
-// Request logging
+// Structured request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+  // In production, consider using a dedicated logger like Pino or Winston
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - IP: ${req.ip}`);
   next();
 });
 
 // Auth — all routes except /health require Bearer token
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  if (req.path === '/health') { next(); return; }
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ') || auth.slice(7) !== SECRET) {
-    res.status(401).json({ error: 'Unauthorized' });
+  if (req.path === '/health') {
+    next();
     return;
   }
+  
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized: Missing or invalid Authorization header format' });
+    return;
+  }
+
+  const token = auth.slice(7);
+  // Using timing-safe comparison would be ideal here if using Node's crypto.timingSafeEqual,
+  // but a simple string comparison is acceptable for internal API secrets.
+  if (token !== SECRET) {
+    res.status(403).json({ error: 'Forbidden: Invalid token' });
+    return;
+  }
+  
   next();
 }
 
 app.use(requireAuth);
 
+// ─── ERROR HANDLING MIDDLEWARE ────────────────────────────────────────────────
+// Catch-all for JSON parsing errors and other synchronous middleware errors
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    res.status(400).json({ error: 'Bad Request: Invalid JSON payload' });
+    return;
+  }
+  next(err);
+});
+
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
 
 app.get('/health', async (_req: Request, res: Response) => {
-  const healthy = await knowledgeGraph.isHealthy();
-  res.status(healthy ? 200 : 503).json({
-    status: healthy ? 'ok' : 'degraded',
-    graph: healthy ? 'connected' : 'disconnected',
-    ts: new Date().toISOString(),
-  });
+  try {
+    const healthy = await knowledgeGraph.isHealthy();
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      graph: healthy ? 'connected' : 'disconnected',
+      ts: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'error',
+      graph: 'disconnected',
+      error: 'Health check failed',
+      ts: new Date().toISOString(),
+    });
+  }
 });
 
 // ─── INGEST ───────────────────────────────────────────────────────────────────
@@ -72,16 +111,23 @@ app.get('/health', async (_req: Request, res: Response) => {
 app.post('/ingest', (req: Request, res: Response) => {
   const { tool_name, result } = req.body;
 
-  if (!tool_name || result === undefined) {
-    res.status(400).json({ error: 'tool_name and result are required' });
+  if (!tool_name || typeof tool_name !== 'string') {
+    res.status(400).json({ error: 'tool_name is required and must be a string' });
+    return;
+  }
+
+  if (result === undefined || result === null) {
+    res.status(400).json({ error: 'result is required' });
     return;
   }
 
   // Respond immediately — never make the caller wait
-  res.status(202).json({ accepted: true });
+  res.status(202).json({ accepted: true, message: 'Ingestion task queued' });
 
-  // Process async, completely silent on errors
-  knowledgeGraph.ingest(tool_name, result).catch(() => {});
+  // Process async, catch errors to prevent unhandled promise rejections crashing the server
+  knowledgeGraph.ingest(tool_name, result).catch((err) => {
+    console.error(`[Background Ingest Error] Tool: ${tool_name} -`, err.message || err);
+  });
 });
 
 // ─── QUERY ────────────────────────────────────────────────────────────────────
@@ -91,11 +137,17 @@ app.post('/ingest', (req: Request, res: Response) => {
 
 app.post('/query', async (req: Request, res: Response) => {
   try {
-    const { name, type, min_confidence = 0.0 } = req.body;
-    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+    const { name, type, min_confidence } = req.body;
+    
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required and must be a string' });
+      return;
+    }
+
+    const confidenceThreshold = typeof min_confidence === 'number' ? min_confidence : 0.0;
 
     const entities = await knowledgeGraph.findEntity(name, type);
-    const filtered = entities.filter(e => e.confidence >= min_confidence);
+    const filtered = entities.filter(e => e.confidence >= confidenceThreshold);
 
     res.json({
       query: name,
@@ -114,7 +166,8 @@ app.post('/query', async (req: Request, res: Response) => {
       })),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Query Error]', err);
+    res.status(500).json({ error: 'Internal server error during query operation' });
   }
 });
 
@@ -126,12 +179,16 @@ app.post('/query', async (req: Request, res: Response) => {
 app.post('/enrich', async (req: Request, res: Response) => {
   try {
     const { identifier } = req.body;
-    if (!identifier) { res.status(400).json({ error: 'identifier is required' }); return; }
+    
+    if (!identifier || typeof identifier !== 'string') {
+      res.status(400).json({ error: 'identifier is required and must be a string' });
+      return;
+    }
 
     const result = await knowledgeGraph.enrich(identifier);
 
     if (!result.entity) {
-      res.json({
+      res.status(404).json({
         identifier,
         found: false,
         message: 'Not yet in graph. Feed data through find_leads, find_emails, or get_company_info first.',
@@ -162,7 +219,8 @@ app.post('/enrich', async (req: Request, res: Response) => {
       confidence: result.confidence,
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Enrich Error]', err);
+    res.status(500).json({ error: 'Internal server error during enrich operation' });
   }
 });
 
@@ -173,14 +231,20 @@ app.post('/enrich', async (req: Request, res: Response) => {
 
 app.post('/connections', async (req: Request, res: Response) => {
   try {
-    const { from, to, max_hops = 3 } = req.body;
-    if (!from || !to) { res.status(400).json({ error: 'from and to are required' }); return; }
+    const { from, to, max_hops } = req.body;
+    
+    if (!from || typeof from !== 'string' || !to || typeof to !== 'string') {
+      res.status(400).json({ error: 'from and to are required and must be strings' });
+      return;
+    }
 
-    const hops = Math.min(Math.max(1, max_hops), 5);
+    const requestedHops = typeof max_hops === 'number' ? max_hops : 3;
+    const hops = Math.min(Math.max(1, requestedHops), 5);
+    
     const result = await knowledgeGraph.findConnections(from, to, hops);
 
     if (!result) {
-      res.json({
+      res.status(404).json({
         from, to,
         connected: false,
         message: `No connection found within ${hops} hops. One or both entities may not yet be in the graph.`,
@@ -201,22 +265,34 @@ app.post('/connections', async (req: Request, res: Response) => {
       })),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Connections Error]', err);
+    res.status(500).json({ error: 'Internal server error during connections operation' });
   }
 });
 
 // ─── INDUSTRY + LOCATION SEARCH ───────────────────────────────────────────────
-// Find companies by industry and optional location — answered from graph, no live API.
+// Find companies by industry and optional location.
 //
 // Body: { industry: string, location?: string, min_confidence?: number }
 
 app.post('/search', async (req: Request, res: Response) => {
   try {
-    const { industry, location, min_confidence = 0.0 } = req.body;
-    if (!industry) { res.status(400).json({ error: 'industry is required' }); return; }
+    const { industry, location, min_confidence } = req.body;
+    
+    if (!industry || typeof industry !== 'string') {
+      res.status(400).json({ error: 'industry is required and must be a string' });
+      return;
+    }
+
+    if (location !== undefined && typeof location !== 'string') {
+      res.status(400).json({ error: 'location must be a string if provided' });
+      return;
+    }
+
+    const confidenceThreshold = typeof min_confidence === 'number' ? min_confidence : 0.0;
 
     const companies = await knowledgeGraph.findByIndustryAndLocation(industry, location);
-    const filtered = companies.filter(c => c.confidence >= min_confidence);
+    const filtered = companies.filter(c => c.confidence >= confidenceThreshold);
 
     res.json({
       industry,
@@ -231,7 +307,8 @@ app.post('/search', async (req: Request, res: Response) => {
       })),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Search Error]', err);
+    res.status(500).json({ error: 'Internal server error during search operation' });
   }
 });
 
@@ -248,8 +325,16 @@ app.get('/stats', async (_req: Request, res: Response) => {
       status: stats.total_nodes > 0 ? 'active' : 'empty — grows with every Forage tool call',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('[Stats Error]', err);
+    res.status(500).json({ error: 'Internal server error while fetching stats' });
   }
+});
+
+// ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────────
+// Catch any unhandled errors in routes
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[Unhandled Server Error]', err);
+  res.status(500).json({ error: 'An unexpected error occurred' });
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
@@ -266,7 +351,7 @@ async function start() {
     } catch (err) {
       retries++;
       if (retries >= maxRetries) {
-        console.error('Failed to init FalkorDB after', maxRetries, 'retries:', err);
+        console.error('CRITICAL: Failed to init FalkorDB after', maxRetries, 'retries:', err);
         process.exit(1);
       }
       const delay = Math.min(1000 * Math.pow(2, retries), 10000);
@@ -275,13 +360,38 @@ async function start() {
     }
   }
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Forage Graph API running on port ${PORT}`);
     console.log(`Health: http://localhost:${PORT}/health`);
   });
+
+  // Graceful shutdown handling
+  const shutdown = async () => {
+    console.log('Shutting down server gracefully...');
+    server.close(async () => {
+      console.log('HTTP server closed.');
+      try {
+        await knowledgeGraph.disconnect();
+        console.log('Database disconnected.');
+        process.exit(0);
+      } catch (err) {
+        console.error('Error during database disconnection:', err);
+        process.exit(1);
+      }
+    });
+
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      console.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 start().catch(err => {
-  console.error('Failed to start:', err);
+  console.error('CRITICAL: Failed to start server:', err);
   process.exit(1);
 });
