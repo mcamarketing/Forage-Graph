@@ -7,7 +7,8 @@
  *
  * Endpoints:
  *   POST /ingest              — receive tool output, extract entities, merge into graph
- *   POST /ingest_raw          — directly insert structured entities with explicit relationships
+ *   POST /ingest_raw          — directly insert a single structured entity with explicit relationships
+ *   POST /ingest_raw_batch    — bulk insert up to 25 entities at once (used by n8n master-feeds pipeline)
  *   POST /query               — find entities by name
  *   POST /enrich              — everything the graph knows about an entity (incl. causal paths)
  *   POST /connections         — find relationship path between two entities
@@ -443,8 +444,63 @@ app.post('/ingest_raw', async (req: Request, res: Response) => {
   }
 });
 
-// ─── STATS ────────────────────────────────────────────────────────────────────
+// ─── INGEST RAW BATCH ─────────────────────────────────────────────────────────
+// Bulk ingestion endpoint called by the n8n master-feeds pipeline.
+// Accepts an array of pre-normalised entities and inserts them all in one request.
+//
+// Body: { batch: Array<{ name, type, properties, relationships, source, confidence }> }
 
+app.post('/ingest_raw_batch', async (req: Request, res: Response) => {
+  try {
+    const { batch } = req.body;
+
+    if (!Array.isArray(batch)) {
+      res.status(400).json({ error: 'batch must be an array' });
+      return;
+    }
+
+    if (batch.length === 0) {
+      res.status(200).json({ accepted_count: 0, skipped: 0, message: 'Empty batch' });
+      return;
+    }
+
+    // Respond immediately — never block the n8n workflow
+    res.status(202).json({
+      accepted_count: batch.length,
+      message: `Batch of ${batch.length} entities queued for ingestion`,
+    });
+
+    // Process async in background
+    (async () => {
+      let success = 0;
+      let failed = 0;
+      for (const item of batch) {
+        if (!item || !item.name || !item.type || !item.source) { failed++; continue; }
+        try {
+          await knowledgeGraph.ingestRaw(
+            item.name,
+            item.type,
+            item.properties || {},
+            Array.isArray(item.relationships) ? item.relationships : [],
+            item.source,
+            typeof item.confidence === 'number' ? item.confidence : 0.7
+          );
+          success++;
+        } catch (e: any) {
+          console.error(`[Batch Ingest] Failed for "${item.name}": ${e.message}`);
+          failed++;
+        }
+      }
+      console.log(`[Batch Ingest Complete] success=${success} failed=${failed} total=${batch.length}`);
+    })().catch(err => console.error('[Batch Ingest Fatal]', err.message));
+
+  } catch (err: any) {
+    console.error('[Ingest Raw Batch Error]', err);
+    res.status(500).json({ error: 'Internal server error during ingest_raw_batch operation' });
+  }
+});
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
 app.get('/stats', async (_req: Request, res: Response) => {
   try {
     const stats = await knowledgeGraph.getStats();
