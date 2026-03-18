@@ -1,0 +1,599 @@
+{
+  "name": "Wikidata Global Intelligence Loader",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 7
+            }
+          ]
+        }
+      },
+      "id": "526d4538-605f-48bf-888f-9c51c5cbf61f",
+      "name": "Run Weekly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://query.wikidata.org/sparql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/sparql-results+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ForageGraph/1.0 (contact@ernesta.ai)"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "query=SELECT%20DISTINCT%20%3Fitem%20%3FitemLabel%20%3FisoCode%20%3Fcapital%20%3FcapitalLabel%20%3Fpopulation%20WHERE%20%7B%0A%20%20%3Fitem%20wdt%3AP31%20wd%3AQ6256%20.%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP297%20%3FisoCode%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP36%20%3Fcapital%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP1082%20%3Fpopulation%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22%20%7D%0A%7D%20LIMIT%20300",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8af914fe-fb29-47db-a834-9b8838c27b7f",
+      "name": "Query: Countries",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        -840
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst bindings = (data && data.results && data.results.bindings) ? data.results.bindings : [];\nconsole.log('Wikidata [Countries]: ' + bindings.length + ' rows');\n\nconst results = [];\nfor (const row of bindings) {\n  try {\n    const fn = (row) => {\n      const b = row;\nconst name = b.itemLabel?.value;\nif (!name || name.startsWith('Q')) return null;\nreturn {\n  name,\n  type: 'country',\n  properties: {\n    iso_code: b.isoCode?.value || '',\n    capital: b.capitalLabel?.value || '',\n    population: b.population?.value || '',\n    wikidata_qid: b.item?.value?.replace('http://www.wikidata.org/entity/', '') || ''\n  },\n  relationships: [],\n  source: 'wikidata',\n  confidence: 0.99,\n  causal_weight: 0.5,\n  mechanism: 'official_registry'\n};\n    };\n    const entity = fn(row);\n    if (!entity || !entity.name) continue;\n    results.push({ json: entity });\n  } catch(e) {\n    // skip bad rows\n  }\n}\n\nreturn results.length > 0\n  ? results\n  : [{ json: { name: 'empty', type: 'political_event', source: 'wikidata', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "0fdd76a6-004d-42b4-8ecf-dbcc7eb1ca2d",
+      "name": "Transform: Countries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -840
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://query.wikidata.org/sparql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/sparql-results+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ForageGraph/1.0 (contact@ernesta.ai)"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "query=SELECT%20DISTINCT%20%3Fperson%20%3FpersonLabel%20%3FcountryLabel%20%3FpositionLabel%20WHERE%20%7B%0A%20%20%3Fcountry%20wdt%3AP31%20wd%3AQ6256%20.%0A%20%20%3Fcountry%20wdt%3AP6%20%3Fperson%20.%0A%20%20OPTIONAL%20%7B%20%3Fperson%20wdt%3AP39%20%3Fposition%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22%20%7D%0A%7D%20LIMIT%20400",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9924aadb-c9a8-464b-8b7b-948837341042",
+      "name": "Query: Heads of Government",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        -560
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst bindings = (data && data.results && data.results.bindings) ? data.results.bindings : [];\nconsole.log('Wikidata [Heads of Government]: ' + bindings.length + ' rows');\n\nconst results = [];\nfor (const row of bindings) {\n  try {\n    const fn = (row) => {\n      const b = row;\nconst name = b.personLabel?.value;\nif (!name || name.startsWith('Q')) return null;\nconst country = b.countryLabel?.value || '';\nreturn {\n  name,\n  type: 'person',\n  properties: {\n    role: b.positionLabel?.value || 'Head of Government',\n    wikidata_qid: b.person?.value?.replace('http://www.wikidata.org/entity/', '') || ''\n  },\n  relationships: country ? [{\n    targetName: country,\n    targetType: 'country',\n    relation: 'governs',\n    confidence: 0.95,\n    causal_weight: 0.6,\n    mechanism: 'political_authority'\n  }] : [],\n  source: 'wikidata',\n  confidence: 0.97,\n  causal_weight: 0.6,\n  mechanism: 'official_registry'\n};\n    };\n    const entity = fn(row);\n    if (!entity || !entity.name) continue;\n    results.push({ json: entity });\n  } catch(e) {\n    // skip bad rows\n  }\n}\n\nreturn results.length > 0\n  ? results\n  : [{ json: { name: 'empty', type: 'political_event', source: 'wikidata', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "ee3ed846-20a6-4dae-b61a-75af95b640c2",
+      "name": "Transform: Heads of Government",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://query.wikidata.org/sparql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/sparql-results+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ForageGraph/1.0 (contact@ernesta.ai)"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "query=SELECT%20DISTINCT%20%3Fbank%20%3FbankLabel%20%3FcountryLabel%20WHERE%20%7B%0A%20%20%3Fbank%20wdt%3AP31%20wd%3AQ1329623%20.%0A%20%20OPTIONAL%20%7B%20%3Fbank%20wdt%3AP17%20%3Fcountry%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22%20%7D%0A%7D%20LIMIT%20300",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a6986afc-3fbb-4e51-bebf-231f2bb3783f",
+      "name": "Query: Central Banks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        -280
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst bindings = (data && data.results && data.results.bindings) ? data.results.bindings : [];\nconsole.log('Wikidata [Central Banks]: ' + bindings.length + ' rows');\n\nconst results = [];\nfor (const row of bindings) {\n  try {\n    const fn = (row) => {\n      const b = row;\nconst name = b.bankLabel?.value;\nif (!name || name.startsWith('Q')) return null;\nconst country = b.countryLabel?.value || '';\nreturn {\n  name,\n  type: 'central_bank',\n  properties: {\n    country: country,\n    wikidata_qid: b.bank?.value?.replace('http://www.wikidata.org/entity/', '') || ''\n  },\n  relationships: country ? [{\n    targetName: country,\n    targetType: 'country',\n    relation: 'regulates_monetary_policy_of',\n    confidence: 0.98,\n    causal_weight: 0.9,\n    mechanism: 'monetary_authority'\n  }] : [],\n  source: 'wikidata',\n  confidence: 0.99,\n  causal_weight: 0.8,\n  mechanism: 'official_registry'\n};\n    };\n    const entity = fn(row);\n    if (!entity || !entity.name) continue;\n    results.push({ json: entity });\n  } catch(e) {\n    // skip bad rows\n  }\n}\n\nreturn results.length > 0\n  ? results\n  : [{ json: { name: 'empty', type: 'political_event', source: 'wikidata', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "956a960b-8edd-4c17-8c74-be0415adbf7c",
+      "name": "Transform: Central Banks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://query.wikidata.org/sparql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/sparql-results+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ForageGraph/1.0 (contact@ernesta.ai)"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "query=SELECT%20DISTINCT%20%3Forg%20%3ForgLabel%20%3FmemberLabel%20WHERE%20%7B%0A%20%20VALUES%20%3ForgType%20%7B%20wd%3AQ484652%20wd%3AQ3624078%20wd%3AQ7210356%20wd%3AQ45103187%20%7D%0A%20%20%3Forg%20wdt%3AP31%20%3ForgType%20.%0A%20%20OPTIONAL%20%7B%20%3Forg%20wdt%3AP17%20%3Fmember%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22%20%7D%0A%7D%20LIMIT%20500",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "51ad53ae-cba4-4608-8edc-a455581f5112",
+      "name": "Query: International Organisations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst bindings = (data && data.results && data.results.bindings) ? data.results.bindings : [];\nconsole.log('Wikidata [International Organisations]: ' + bindings.length + ' rows');\n\nconst results = [];\nfor (const row of bindings) {\n  try {\n    const fn = (row) => {\n      const b = row;\nconst name = b.orgLabel?.value;\nif (!name || name.startsWith('Q')) return null;\nreturn {\n  name,\n  type: 'regional_bloc',\n  properties: {\n    wikidata_qid: b.org?.value?.replace('http://www.wikidata.org/entity/', '') || ''\n  },\n  relationships: b.memberLabel?.value ? [{\n    targetName: b.memberLabel.value,\n    targetType: 'country',\n    relation: 'member_of',\n    confidence: 0.95,\n    causal_weight: 0.5,\n    mechanism: 'treaty_membership'\n  }] : [],\n  source: 'wikidata',\n  confidence: 0.98,\n  causal_weight: 0.6,\n  mechanism: 'official_registry'\n};\n    };\n    const entity = fn(row);\n    if (!entity || !entity.name) continue;\n    results.push({ json: entity });\n  } catch(e) {\n    // skip bad rows\n  }\n}\n\nreturn results.length > 0\n  ? results\n  : [{ json: { name: 'empty', type: 'political_event', source: 'wikidata', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "38617c7f-31b7-4073-8e8c-1055b35001de",
+      "name": "Transform: International Organisations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://query.wikidata.org/sparql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/sparql-results+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ForageGraph/1.0 (contact@ernesta.ai)"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "query=SELECT%20DISTINCT%20%3Fcompany%20%3FcompanyLabel%20%3FcountryLabel%20%3FindustryLabel%20%3Fwebsite%20WHERE%20%7B%0A%20%20%3Fcompany%20wdt%3AP31%20wd%3AQ4830453%20.%0A%20%20%3Fcompany%20wdt%3AP17%20%3Fcountry%20.%0A%20%20OPTIONAL%20%7B%20%3Fcompany%20wdt%3AP452%20%3Findustry%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fcompany%20wdt%3AP856%20%3Fwebsite%20%7D%0A%20%20%3Fcompany%20wdt%3AP1082%20%3Femployees%20.%0A%20%20FILTER%28%3Femployees%20%3E%2010000%29%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22%20%7D%0A%7D%20LIMIT%202000",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c87b2524-0f32-4c23-8711-9bbe64c47f81",
+      "name": "Query: Fortune 500 Companies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        280
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst bindings = (data && data.results && data.results.bindings) ? data.results.bindings : [];\nconsole.log('Wikidata [Fortune 500 Companies]: ' + bindings.length + ' rows');\n\nconst results = [];\nfor (const row of bindings) {\n  try {\n    const fn = (row) => {\n      const b = row;\nconst name = b.companyLabel?.value;\nif (!name || name.startsWith('Q')) return null;\nconst country = b.countryLabel?.value || '';\nconst website = b.website?.value || '';\nconst domain = website ? website.replace(/^https?:\\/\\//, '').replace(/\\/.*$/, '').replace(/^www\\./, '') : '';\nreturn {\n  name,\n  type: 'company',\n  properties: {\n    domain,\n    country,\n    industry: b.industryLabel?.value || '',\n    wikidata_qid: b.company?.value?.replace('http://www.wikidata.org/entity/', '') || ''\n  },\n  relationships: [\n    ...(country ? [{ targetName: country, targetType: 'country', relation: 'located_in', confidence: 0.95, causal_weight: 0.3, mechanism: 'geographic_context' }] : []),\n    ...(b.industryLabel?.value ? [{ targetName: b.industryLabel.value, targetType: 'industry', relation: 'operates_in', confidence: 0.90, causal_weight: 0.4, mechanism: 'sector_classification' }] : [])\n  ],\n  source: 'wikidata',\n  confidence: 0.92,\n  causal_weight: 0.4,\n  mechanism: 'official_registry'\n};\n    };\n    const entity = fn(row);\n    if (!entity || !entity.name) continue;\n    results.push({ json: entity });\n  } catch(e) {\n    // skip bad rows\n  }\n}\n\nreturn results.length > 0\n  ? results\n  : [{ json: { name: 'empty', type: 'political_event', source: 'wikidata', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "02ff8911-3075-4113-8138-6dc7713f336f",
+      "name": "Transform: Fortune 500 Companies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://query.wikidata.org/sparql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/sparql-results+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "ForageGraph/1.0 (contact@ernesta.ai)"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "query=SELECT%20DISTINCT%20%3Fconflict%20%3FconflictLabel%20%3FcountryLabel%20%3FstartDate%20WHERE%20%7B%0A%20%20VALUES%20%3FconflictType%20%7B%20wd%3AQ198%20wd%3AQ8465%20wd%3AQ180684%20%7D%0A%20%20%3Fconflict%20wdt%3AP31%20%3FconflictType%20.%0A%20%20OPTIONAL%20%7B%20%3Fconflict%20wdt%3AP17%20%3Fcountry%20%7D%0A%20%20OPTIONAL%20%7B%20%3Fconflict%20wdt%3AP580%20%3FstartDate%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22en%22%20%7D%0A%7D%20LIMIT%20500",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "acbfcdd9-16df-425f-ab0b-5d66786fd7f9",
+      "name": "Query: Major Conflicts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        560
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst bindings = (data && data.results && data.results.bindings) ? data.results.bindings : [];\nconsole.log('Wikidata [Major Conflicts]: ' + bindings.length + ' rows');\n\nconst results = [];\nfor (const row of bindings) {\n  try {\n    const fn = (row) => {\n      const b = row;\nconst name = b.conflictLabel?.value;\nif (!name || name.startsWith('Q')) return null;\nconst country = b.countryLabel?.value || '';\nreturn {\n  name,\n  type: 'conflict_event',\n  properties: {\n    start_date: b.startDate?.value || '',\n    country,\n    wikidata_qid: b.conflict?.value?.replace('http://www.wikidata.org/entity/', '') || ''\n  },\n  relationships: country ? [{\n    targetName: country,\n    targetType: 'country',\n    relation: 'located_in',\n    confidence: 0.90,\n    causal_weight: 0.7,\n    mechanism: 'geographic_context'\n  }] : [],\n  source: 'wikidata',\n  confidence: 0.90,\n  causal_weight: 0.7,\n  mechanism: 'official_registry'\n};\n    };\n    const entity = fn(row);\n    if (!entity || !entity.name) continue;\n    results.push({ json: entity });\n  } catch(e) {\n    // skip bad rows\n  }\n}\n\nreturn results.length > 0\n  ? results\n  : [{ json: { name: 'empty', type: 'political_event', source: 'wikidata', properties: {}, relationships: [], confidence: 0, causal_weight: 0, mechanism: 'none' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "8eea231c-68c3-47df-9788-ea574cc40cd2",
+      "name": "Transform: Major Conflicts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "outputDataFrom": "all"
+      },
+      "id": "3f7a4f1b-7c58-4e33-977f-e830f1959487",
+      "name": "Merge All",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst BATCH_SIZE = 25;\nconst batches = [];\nconst valid = items.filter(i => i.json && typeof i.json === 'object' && i.json.name && i.json.name !== 'empty');\nfor (let i = 0; i < valid.length; i += BATCH_SIZE) {\n  batches.push({ json: { batch: valid.slice(i, i + BATCH_SIZE).map(x => x.json) } });\n}\nreturn batches.length > 0 ? batches : [{ json: { batch: [] } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "e6defcb0-c240-46c8-8b86-9123b8c6c140",
+      "name": "Batch (25)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://forage-graph-production.up.railway.app/ingest_raw_batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 6da69224eb14e6bdb0fb63514b772480d23a4467f8ac8a4b15266a8262d7f959"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "40a5c32c-89d6-4682-b5bb-00610d506941",
+      "name": "POST to Graph",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1240,
+        0
+      ],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Run Weekly": {
+      "main": [
+        [
+          {
+            "node": "Query: Countries",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query: Heads of Government",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query: Central Banks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query: International Organisations",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query: Fortune 500 Companies",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query: Major Conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query: Countries": {
+      "main": [
+        [
+          {
+            "node": "Transform: Countries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query: Heads of Government": {
+      "main": [
+        [
+          {
+            "node": "Transform: Heads of Government",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query: Central Banks": {
+      "main": [
+        [
+          {
+            "node": "Transform: Central Banks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query: International Organisations": {
+      "main": [
+        [
+          {
+            "node": "Transform: International Organisations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query: Fortune 500 Companies": {
+      "main": [
+        [
+          {
+            "node": "Transform: Fortune 500 Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query: Major Conflicts": {
+      "main": [
+        [
+          {
+            "node": "Transform: Major Conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform: Countries": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform: Heads of Government": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Transform: Central Banks": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Transform: International Organisations": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Transform: Fortune 500 Companies": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Transform: Major Conflicts": {
+      "main": [
+        [
+          {
+            "node": "Merge All",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Merge All": {
+      "main": [
+        [
+          {
+            "node": "Batch (25)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch (25)": {
+      "main": [
+        [
+          {
+            "node": "POST to Graph",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "versionId": "586ad83e-acf9-4521-9d2a-9b15afdf681f",
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": []
+}
