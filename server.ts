@@ -27,6 +27,7 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import { knowledgeGraph } from './knowledge-graph.js';
 
 const app  = express();
@@ -41,6 +42,11 @@ if (!SECRET) {
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '10mb' }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -238,6 +244,65 @@ app.post('/search', async (req: Request, res: Response) => {
         properties: c.properties,
         last_seen: c.last_seen,
       })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DIRECT INJECTION ─────────────────────────────────────────────────────────
+// For n8n workflows and external feeds to inject entities/connections directly.
+//
+// POST /ingest/entities - Add entities directly
+// Body: { entities: Array<{ type, name, properties?, confidence?, source? }> }
+
+app.post('/ingest/entities', async (req: Request, res: Response) => {
+  try {
+    const { entities } = req.body;
+    if (!entities || !Array.isArray(entities)) {
+      res.status(400).json({ error: 'entities array is required' });
+      return;
+    }
+
+    const result = await knowledgeGraph.addEntities(entities);
+    res.status(201).json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /ingest/connections - Add connections directly
+// Body: { connections: Array<{ from_type, from_name, to_type, to_name, relation, properties?, confidence?, source? }> }
+
+app.post('/ingest/connections', async (req: Request, res: Response) => {
+  try {
+    const { connections } = req.body;
+    if (!connections || !Array.isArray(connections)) {
+      res.status(400).json({ error: 'connections array is required' });
+      return;
+    }
+
+    const result = await knowledgeGraph.addConnections(connections);
+    res.status(201).json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /ingest/bulk - Bulk ingest entities AND connections in one call
+// Body: { entities?: Array<...>, connections?: Array<...> }
+
+app.post('/ingest/bulk', async (req: Request, res: Response) => {
+  try {
+    const { entities = [], connections = [] } = req.body;
+
+    const entityResult = await knowledgeGraph.addEntities(entities);
+    const connResult = await knowledgeGraph.addConnections(connections);
+
+    res.status(201).json({
+      success: true,
+      entities: entityResult,
+      connections: connResult,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -462,14 +527,163 @@ app.post('/simulate', async (req: Request, res: Response) => {
   }
 });
 
+// ─── LINK PREDICTION ──────────────────────────────────────────────────────────
+// Predict potential links using Adamic-Adar similarity.
+//
+// $$AA(i,j) = \sum_{v \in N(i) \cap N(j)} \frac{1}{\log d_v}$$
+//
+// Body: { entity: string, target_type?: string, max_predictions?: number }
+
+app.post('/predict_links', async (req: Request, res: Response) => {
+  try {
+    const { entity, target_type, max_predictions = 10 } = req.body;
+    if (!entity) { res.status(400).json({ error: 'entity is required' }); return; }
+
+    const predictions = await knowledgeGraph.predictLinks(entity, target_type, max_predictions);
+    
+    res.json({
+      entity,
+      target_type: target_type || null,
+      predictions: predictions.map(p => ({
+        target: p.target,
+        score: p.score,
+        algorithm: p.algorithm,
+        common_neighbors: p.common_neighbors,
+        confidence: p.confidence,
+      })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── HAWKES CONTAGION ────────────────────────────────────────────────────────
+// Get current contagion state for an entity using Hawkes Process.
+//
+// Intensity function: $\lambda(t) = \mu + \sum_{t_i < t} \phi(t - t_i)$
+// Branching ratio: $R_j = \sum_{i \neq j} \alpha_{ij}$
+//
+// Body: { entity: string }
+
+app.post('/contagion', async (req: Request, res: Response) => {
+  try {
+    const { entity } = req.body;
+    if (!entity) { res.status(400).json({ error: 'entity is required' }); return; }
+
+    const state = await knowledgeGraph.getContagionState(entity);
+    if (!state) {
+      res.json({ entity, found: false, message: 'Entity not found or no contagion data' });
+      return;
+    }
+
+    res.json({
+      entity: state.entityId,
+      entity_type: state.entityType,
+      intensity: state.intensity,
+      branching_ratio: state.branching_ratio,
+      is_tipping: state.is_tipping,
+      drivers: state.drivers,
+      interpretation: state.branching_ratio > 1 
+        ? 'Super-critical: Self-sustaining cascade likely'
+        : state.branching_ratio > 0.5
+        ? 'Critical: Cascade possible with trigger'
+        : 'Sub-critical: Cascade unlikely',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SHOCK SIMULATION (HAWKES) ───────────────────────────────────────────────
+// Simulate shock propagation using Hawkes Process.
+//
+// Forward simulation of self-exciting point process:
+// $$\lambda_j(t) = \mu_j + \sum_{i} \sum_{t_i^k < t} \alpha_{ij} \beta e^{-\beta(t - t_i^k)}$$
+//
+// Body: { entity: string, magnitude?: number, duration_hours?: number }
+
+app.post('/simulate_shock', async (req: Request, res: Response) => {
+  try {
+    const { entity, magnitude = 1.0, duration_hours = 168 } = req.body;
+    if (!entity) { res.status(400).json({ error: 'entity is required' }); return; }
+
+    const result = await knowledgeGraph.simulateShock(entity, magnitude, duration_hours);
+    if (!result) {
+      res.json({ entity, found: false, message: 'Entity not found' });
+      return;
+    }
+
+    res.json({
+      source: result.sourceEntity,
+      shock_magnitude: result.shockMagnitude,
+      cascade: result.cascade.map(c => ({
+        entity: c.entityId,
+        entity_type: c.entityType,
+        peak_time_hours: c.peak_time_hours,
+        peak_intensity: c.peak_intensity,
+        total_impact: c.total_impact,
+      })),
+      summary: result.summary,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── RECORD HAWKES EVENT ─────────────────────────────────────────────────────
+// Record an event for Hawkes Process modeling.
+//
+// Body: { entity: string, entity_type: string, intensity?: number, lat?: number, lon?: number }
+
+app.post('/event', async (req: Request, res: Response) => {
+  try {
+    const { entity, entity_type, intensity = 1.0, lat, lon } = req.body;
+    if (!entity || !entity_type) {
+      res.status(400).json({ error: 'entity and entity_type are required' });
+      return;
+    }
+
+    await knowledgeGraph.recordEvent({
+      entityId: entity,
+      entityType: entity_type,
+      timestamp: Date.now(),
+      intensity,
+      lat,
+      lon,
+    });
+
+    res.status(202).json({ accepted: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── RECALIBRATE HAWKES ──────────────────────────────────────────────────────
+// Recalibrate Hawkes Process parameters using MLE.
+//
+// $$\hat{\mu} = \frac{N}{T}, \quad \hat{\alpha}_{ij} = \frac{\text{co-occurrences}}{\text{total}}$$
+//
+// Body: { window_hours?: number }
+
+app.post('/recalibrate', async (req: Request, res: Response) => {
+  try {
+    const { window_hours = 720 } = req.body;
+    await knowledgeGraph.recalibrateHawkes(window_hours);
+    res.json({ success: true, message: 'Hawkes process recalibrated' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── START ────────────────────────────────────────────────────────────────────
 
 async function start() {
   await knowledgeGraph.init();
 
   app.listen(PORT, () => {
-    console.log(`Forage Graph API running on port ${PORT}`);
+    console.log(`Forage Reality Graph API running on port ${PORT}`);
     console.log(`Health: http://localhost:${PORT}/health`);
+    console.log(`Features: FIBO schema, ULEM dual-hash, Hawkes contagion, Adamic-Adar prediction`);
   });
 }
 

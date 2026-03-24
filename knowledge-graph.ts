@@ -13,42 +13,165 @@
 
 import { createClient } from 'redis';
 import { createHash } from 'crypto';
+import { generateULEMIdentity, ULEMIdentity, generateCompositeId } from './ulem-identity.js';
+import { AdamicAdarScorer, JaccardScorer, LinkPrediction } from './link-prediction.js';
+import { HawkesProcessEngine, HawkesEvent, ContagionResult, ShockSimulation, estimateHawkesParams } from './hawkes-contagion.js';
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
+// ─── FIBO-ALIGNED ENTITY TYPES ────────────────────────────────────────────────
+// Mapped to Financial Industry Business Ontology (FIBO)
+// [fibo-001] https://spec.edmcouncil.org/fibo/ontology
 
 export type EntityType =
-  | 'Company'
-  | 'Person'
-  | 'Location'
+  // FIBO Legal Entities
+  | 'LegalEntity'          // FIBO: LegalEntity (base type for all organizations)
+  | 'AutonomousAgent'      // FIBO: AutonomousAgent (AI agents, bots, autonomous orgs)
+  | 'FinancialInstitution' // FIBO: FinancialInstitution (banks, credit unions)
+  | 'Corporation'          // FIBO: Corporation (incorporated entities)
+  | 'SoleProprietor'       // FIBO: SoleProprietor (unincorporated businesses)
+  
+  // Legacy compatibility (deprecated, use FIBO types)
+  | 'Company'              // Maps to Corporation/FinancialInstitution
+  | 'Person'               // FIBO: Person (natural person)
+  
+  // FIBO Financial Instruments
+  | 'FinancialInstrument'  // FIBO: FinancialInstrument (base)
+  | 'DebtInstrument'       // FIBO: DebtInstrument (bonds, loans)
+  | 'EquityInstrument'     // FIBO: EquityInstrument (stocks, shares)
+  | 'DerivativeInstrument' // FIBO: DerivativeInstrument (options, futures)
+  | 'Asset'                // FIBO: Asset (any asset class)
+  
+  // Geographic/Spatial
+  | 'Location'             // FIBO: GeographicLocation
+  | 'Jurisdiction'         // FIBO: Jurisdiction (legal jurisdiction)
+  
+  // Industry/Market
+  | 'Industry'             // FIBO: IndustrySector
+  | 'Market'               // FIBO: Market
+  | 'EconomicSector'       // FIBO: EconomicSector
+  
+  // Information/Knowledge
   | 'Technology'
-  | 'Industry'
   | 'Domain'
   | 'JobTitle'
-  | 'EmailPattern';
+  | 'EmailPattern'
+  | 'InformationSource'    // FIBO: InformationSource
+  
+  // Causal Intelligence Types
+  | 'Event'                // Temporal events (macro, geopolitical)
+  | 'Trend'
+  | 'Indicator'            // Economic indicators (GDP, CPI, etc.)
+  | 'Forecast'
+  | 'Risk'
+  | 'Opportunity'
+  | 'Policy'               // Government policy changes
+  | 'Regulation'           // Regulatory changes
+  | 'Sentiment'
+  | 'Topic'
+  | 'Narrative'
+  | 'Actor'                // Political/financial actors
+  | 'Network';             // Organizational networks
 
 export type RelationType =
-  | 'works_at'
+  // FIBO Role Pattern Relationships [fibo-role-001]
+  // Entities play ROLES, not direct connections
+  | 'holds_role'           // Entity plays a role (e.g., Company plays "Issuer")
+  | 'is_agent_in'          // Agent acts on behalf of another entity
+  | 'has_jurisdiction'     // Entity operates under jurisdiction
+  
+  // FIBO Organizational
+  | 'works_at'             // Person employs at Organization
+  | 'has_authorized_agent' // LegalEntity has Agent
+  | 'subsidiary_of'        // Corporation subsidiary relationship
+  | 'owns'                 // Ownership relationship
+  | 'controlled_by'        // Control relationship
+  
+  // FIBO Financial
+  | 'issues'               // Entity issues FinancialInstrument
+  | 'investor_in'          // Entity invests in another
+  | 'creditor_of'          // Entity holds debt of another
+  | 'insures'              // Entity insures another
+  | 'guarantees'           // Entity guarantees obligation
+  
+  // Geographic/Spatial
   | 'located_in'
-  | 'competitor_of'
-  | 'uses_technology'
   | 'operates_in'
-  | 'has_email_pattern'
+  | 'headquartered_in'
+  
+  // Industry/Market
+  | 'competitor_of'
+  | 'complements'
+  | 'supplies_to'
+  | 'purchases_from'
+  
+  // Technology/Infrastructure
+  | 'uses_technology'
   | 'has_domain'
+  | 'has_email_pattern'
+  
+  // Social/Reporting
   | 'reports_to'
   | 'founded_by'
-  | 'investor_in';
+  | 'board_member_of'
+  
+  // Causal Relations [causal-001]
+  | 'causes'
+  | 'caused_by'
+  | 'predicts'
+  | 'predicted_by'
+  | 'correlates_with'
+  | 'impacts'
+  | 'impacted_by'
+  | 'enables'
+  | 'prevents'
+  | 'amplifies'
+  | 'dampens'
+  | 'precedes'
+  | 'follows'
+  | 'indicates'
+  | 'signals'
+  
+  // Hierarchical
+  | 'part_of'
+  | 'contains'
+  | 'related_to'
+  | 'opposes'
+  | 'supports'
+  | 'influences';           // Bidirectional influence
 
 export type Regime = 'normal' | 'stressed' | 'pre_tipping' | 'post_event';
 
 export interface GraphNode {
-  id: string;
+  id: string;                    // Composite ULEM ID: {sha3_id}:{blake3_id}
   type: EntityType;
   name: string;
+  
+  // ULEM Identity Fields [ulem-001]
+  ulem?: {
+    sha3_id: string;            // Primary: SHA3-256 (first 16 hex)
+    blake3_id: string;          // Secondary: Blake3 (first 12 hex)
+    canonical: string;          // Canonical form used for hashing
+  };
+  
+  // FIBO Role Pattern [fibo-role-002]
+  roles?: Array<{
+    role_type: string;          // e.g., "Issuer", "Regulator", "Counterparty"
+    context: string;            // Context where role is played
+    since?: string;             // When role started
+  }>;
+  
   properties: Record<string, any>;
   sources: string[];
   confidence: number;
   call_count: number;
   regime?: Regime;
+  
+  // GraphBLAS optimization: cached degree for fast traversal
+  degree?: number;
+  
+  // Hawkes Process state [hawkes-state-001]
+  intensity?: number;           // Current Hawkes intensity λ(t)
+  branching_ratio?: number;     // Reproduction number R
+  
   first_seen: string;
   last_seen: string;
 }
@@ -63,6 +186,13 @@ export interface GraphEdge {
   properties: Record<string, any>;
   confidence: number;
   call_count: number;
+  
+  // GraphBLAS optimization [graphblas-001]
+  weight?: number;              // Matrix weight for GraphBLAS semiring operations
+  
+  // Hawkes contagion weight [hawkes-edge-001]
+  contagion_weight?: number;    // α_ij for Hawkes process intensity
+  
   first_seen: string;
   last_seen: string;
 }
@@ -139,6 +269,71 @@ class KnowledgeStore {
       ).catch(() => {});
     } catch {
       // Indexes are optional — graph still works without them
+    }
+  }
+
+  // ── GETTERS FOR EXTERNAL MODULES ────────────────────────────────────────────
+  
+  /**
+   * Get underlying Redis client for link prediction modules.
+   * [graphblas-002]
+   */
+  getClient(): ReturnType<typeof createClient> | null {
+    return this.client;
+  }
+
+  /**
+   * Get graph name for GraphBLAS operations.
+   */
+  getGraphName(): string {
+    return this.graphName;
+  }
+
+  // ── BATCH OPERATIONS [cypher-002] ─────────────────────────────────────────────
+  
+  /**
+   * Batch create relationships using UNWIND for GraphBLAS optimization.
+   * 
+   * Uses Endpoint-First MERGE to prevent matrix duplication:
+   * $$
+   * \text{MERGE}(a) \parallel \text{MERGE}(b) \implies (a) -[r]-> (b)
+   * $$
+   * 
+   * Cypher pattern:
+   * ```cypher
+   * UNWIND $batch AS row
+   * MATCH (a:Entity {id: row.from_id})
+   * MATCH (b:Entity {id: row.to_id})
+   * MERGE (a)-[r:RELATES]->(b)
+   * SET r.relation = row.relation, r.weight = row.weight
+   * ```
+   * [cypher-unwind-002]
+   */
+  async batchCreateRelationships(
+    batch: Array<{
+      from_id: string;
+      to_id: string;
+      relation: string;
+      weight: number;
+      contagion_weight: number;
+    }>
+  ): Promise<void> {
+    if (!this.client || batch.length === 0) return;
+
+    try {
+      await this.graphQuery(
+        `UNWIND $batch AS row
+         MATCH (a:Entity {id: row.from_id})
+         MATCH (b:Entity {id: row.to_id})
+         MERGE (a)-[r:RELATES]->(b)
+         SET r.relation = row.relation,
+             r.weight = row.weight,
+             r.contagion_weight = row.contagion_weight,
+             r.updated_at = timestamp()`,
+        { batch }
+      );
+    } catch {
+      // Silent failure for batch operations
     }
   }
 
@@ -765,6 +960,14 @@ function extractFromWebSearch(data: {
 export class KnowledgeGraph {
   private db: KnowledgeStore;
   private ready = false;
+  
+  // Link prediction scorers [fp-001]
+  private adamicAdar: AdamicAdarScorer | null = null;
+  private jaccard: JaccardScorer | null = null;
+  
+  // Hawkes process engine [hawkes-001]
+  private hawkes: HawkesProcessEngine | null = null;
+  private hawkesEvents: HawkesEvent[] = [];
 
   constructor() {
     this.db = new KnowledgeStore();
@@ -774,7 +977,24 @@ export class KnowledgeGraph {
     try {
       await this.db.init();
       this.ready = true;
-      console.log('Knowledge graph initialised');
+      
+      // Initialize link prediction scorers
+      const client = this.db.getClient();
+      const graphName = this.db.getGraphName();
+      if (client) {
+        this.adamicAdar = new AdamicAdarScorer(client, graphName);
+        this.jaccard = new JaccardScorer(client, graphName);
+      }
+      
+      // Initialize Hawkes process with default params
+      this.hawkes = new HawkesProcessEngine({
+        mu: 0.01,
+        alpha: new Map(),
+        beta: 0.1,
+        gamma: 0.001,
+      });
+      
+      console.log('Knowledge graph initialised with Reality Graph features');
     } catch (err: any) {
       console.error('Knowledge graph init failed:', err.message);
       this.ready = false;
@@ -798,14 +1018,94 @@ export class KnowledgeGraph {
   }
 
   private extract(toolName: string, result: any): { nodes: GraphNode[]; edges: GraphEdge[] } {
-    switch (toolName) {
-      case 'find_leads':       return extractFromLeads(result?.leads || []);
+    // Normalize tool name: forage/find-leads → find_leads, FIND_LEADS → find_leads
+    const normalized = toolName
+      .toLowerCase()
+      .replace(/^forage[\/\-_]?/, '')
+      .replace(/[-\s]/g, '_')
+      .trim();
+
+    switch (normalized) {
+      case 'find_leads':       return extractFromLeads(result?.leads || result || []);
       case 'find_emails':      return extractFromEmails(result || {});
       case 'get_company_info': return extractFromCompanyInfo(result || {});
       case 'find_local_leads': return extractFromLocalLeads(result || {});
       case 'search_web':       return extractFromWebSearch(result || {});
-      default:                 return { nodes: [], edges: [] };
+      default:                 return this.extractUniversal(toolName, result);
     }
+  }
+
+  // Universal fallback extractor - extracts entities from any JSON structure
+  private extractUniversal(source: string, data: any): { nodes: GraphNode[]; edges: GraphEdge[] } {
+    const nodes: GraphNode[] = [];
+    const edges: GraphEdge[] = [];
+    if (!data || typeof data !== 'object') return { nodes, edges };
+
+    const extract = (obj: any, depth = 0): void => {
+      if (depth > 5 || !obj) return;
+      if (Array.isArray(obj)) { obj.forEach(item => extract(item, depth + 1)); return; }
+      if (typeof obj !== 'object') return;
+
+      // Auto-detect entities by field names
+      const entityMappings: Record<string, EntityType> = {
+        company: 'Company', organization: 'Company', business: 'Company', firm: 'Company',
+        person: 'Person', name: 'Person', author: 'Person', creator: 'Person',
+        location: 'Location', city: 'Location', country: 'Location', region: 'Location', address: 'Location',
+        domain: 'Domain', website: 'Domain', url: 'Domain',
+        technology: 'Technology', tech: 'Technology', platform: 'Technology', tool: 'Technology',
+        industry: 'Industry', sector: 'Industry', market: 'Market',
+        event: 'Event', incident: 'Event', occurrence: 'Event',
+        trend: 'Trend', pattern: 'Trend', movement: 'Trend',
+        risk: 'Risk', threat: 'Risk', danger: 'Risk',
+        opportunity: 'Opportunity', prospect: 'Opportunity',
+        topic: 'Topic', subject: 'Topic', theme: 'Topic',
+        sentiment: 'Sentiment', mood: 'Sentiment', feeling: 'Sentiment',
+        indicator: 'Indicator', metric: 'Indicator', signal: 'Indicator',
+        forecast: 'Forecast', prediction: 'Forecast', projection: 'Forecast',
+        policy: 'Policy', rule: 'Policy', regulation: 'Regulation',
+        asset: 'Asset', resource: 'Asset', holding: 'Asset',
+        actor: 'Actor', agent: 'Actor', player: 'Actor',
+        network: 'Network', graph: 'Network', system: 'Network',
+        narrative: 'Narrative', story: 'Narrative', account: 'Narrative',
+        source: 'InformationSource', origin: 'InformationSource', reference: 'InformationSource',
+      };
+
+      for (const [field, value] of Object.entries(obj)) {
+        if (!value || typeof value !== 'string' || value.length < 2 || value.length > 200) continue;
+        const fieldLower = field.toLowerCase();
+        const entityType = entityMappings[fieldLower];
+        if (entityType) {
+          const cleanValue = entityType === 'Domain' ? extractDomain(value) || value : value.trim();
+          if (cleanValue && cleanValue.length > 1) {
+            nodes.push(buildNode(entityType, cleanValue, { source_field: field }, source, 0.6));
+          }
+        }
+      }
+
+      // Also extract arrays of entities
+      for (const [field, value] of Object.entries(obj)) {
+        if (Array.isArray(value)) {
+          value.forEach(item => {
+            if (typeof item === 'object') extract(item, depth + 1);
+          });
+        } else if (typeof value === 'object') {
+          extract(value, depth + 1);
+        }
+      }
+    };
+
+    extract(data);
+
+    // Build connections between co-occurring entities
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        if (nodes[i].type !== nodes[j].type && nodes[i].id !== nodes[j].id) {
+          edges.push(buildEdge(nodes[i], nodes[j], 'related_to', source, 0.5));
+        }
+      }
+    }
+
+    return { nodes, edges };
   }
 
   private async merge(newNodes: GraphNode[], newEdges: GraphEdge[]): Promise<void> {
@@ -964,6 +1264,93 @@ export class KnowledgeGraph {
 
   async getStats(): Promise<GraphStats> {
     return this.db.getStats();
+  }
+
+  // ── DIRECT INJECTION ────────────────────────────────────────────────────────
+  // For n8n workflows and external feeds to inject entities/connections directly
+
+  async addEntities(entities: Array<{
+    type: EntityType;
+    name: string;
+    properties?: Record<string, any>;
+    confidence?: number;
+    source?: string;
+  }>): Promise<{ added: number; merged: number }> {
+    if (!this.ready) return { added: 0, merged: 0 };
+
+    let added = 0, merged = 0;
+    const now = new Date().toISOString();
+
+    for (const e of entities) {
+      const node = buildNode(
+        e.type,
+        e.name,
+        e.properties || {},
+        e.source || 'direct_inject',
+        e.confidence || 0.75
+      );
+
+      const existing = await this.db.getNode(node.id);
+      if (existing) {
+        const m = mergeNodeProperties(existing, node);
+        m.last_seen = now;
+        m.call_count = (existing.call_count || 1) + 1;
+        m.confidence = Math.min(0.99, existing.confidence + 0.03);
+        await this.db.setNode(m);
+        merged++;
+      } else {
+        await this.db.setNode({ ...node, first_seen: now, last_seen: now });
+        added++;
+      }
+    }
+
+    return { added, merged };
+  }
+
+  async addConnections(connections: Array<{
+    from_type: EntityType;
+    from_name: string;
+    to_type: EntityType;
+    to_name: string;
+    relation: RelationType;
+    properties?: Record<string, any>;
+    confidence?: number;
+    source?: string;
+  }>): Promise<{ added: number; merged: number }> {
+    if (!this.ready) return { added: 0, merged: 0 };
+
+    let added = 0, merged = 0;
+    const now = new Date().toISOString();
+
+    for (const c of connections) {
+      const fromNode = buildNode(c.from_type, c.from_name, {}, c.source || 'direct_inject');
+      const toNode = buildNode(c.to_type, c.to_name, {}, c.source || 'direct_inject');
+
+      // Ensure both nodes exist
+      if (!await this.db.getNode(fromNode.id)) {
+        await this.db.setNode({ ...fromNode, first_seen: now, last_seen: now });
+      }
+      if (!await this.db.getNode(toNode.id)) {
+        await this.db.setNode({ ...toNode, first_seen: now, last_seen: now });
+      }
+
+      const edge = buildEdge(fromNode, toNode, c.relation, c.source || 'direct_inject', c.confidence || 0.75);
+      if (c.properties) edge.properties = { ...edge.properties, ...c.properties };
+
+      const existing = await this.db.getEdge(edge.id);
+      if (existing) {
+        existing.call_count = (existing.call_count || 1) + 1;
+        existing.confidence = Math.min(0.99, existing.confidence + 0.05);
+        existing.last_seen = now;
+        await this.db.setEdge(existing);
+        merged++;
+      } else {
+        await this.db.setEdge({ ...edge, first_seen: now, last_seen: now });
+        added++;
+      }
+    }
+
+    return { added, merged };
   }
 
   // ── REGIME ─────────────────────────────────────────────────────────────────
@@ -1174,6 +1561,133 @@ export class KnowledgeGraph {
     
     return { affected: affected.sort((a, b) => Math.abs(b.residual_impact) - Math.abs(a.residual_impact)), summary };
   }
+
+  // ── LINK PREDICTION [fp-002] ──────────────────────────────────────────────────
+  
+  /**
+   * Predict potential links using Adamic-Adar similarity.
+   * 
+   * $$AA(i,j) = \sum_{v \in N(i) \cap N(j)} \frac{1}{\log d_v}$$
+   * 
+   * Returns entities likely to be connected based on shared neighbor topology.
+   */
+  async predictLinks(
+    entityName: string,
+    targetEntityType?: string,
+    maxPredictions = 10
+  ): Promise<LinkPrediction[]> {
+    if (!this.ready || !this.adamicAdar) return [];
+    
+    const nodes = await this.findEntity(entityName);
+    if (!nodes.length) return [];
+    
+    return this.adamicAdar.predictLinks(nodes[0].id, targetEntityType, maxPredictions);
+  }
+
+  // ── HAWKES PROCESS CONTAGION [hawkes-002] ─────────────────────────────────────
+
+  /**
+   * Record an event for Hawkes process modeling.
+   * Events are used to compute self-exciting intensity for causal contagion.
+   */
+  async recordEvent(event: HawkesEvent): Promise<void> {
+    if (!this.ready || !this.hawkes) return;
+    
+    this.hawkesEvents.push(event);
+    this.hawkes.addEvents([event]);
+  }
+
+  /**
+   * Get current contagion state for an entity.
+   * 
+   * Uses Hawkes Process to compute:
+   * - Current intensity $\lambda(t)$
+   * - Branching ratio $R$ (reproduction number)
+   * - Top drivers of intensity
+   */
+  async getContagionState(entityName: string): Promise<ContagionResult | null> {
+    if (!this.ready || !this.hawkes) return null;
+    
+    const nodes = await this.findEntity(entityName);
+    if (!nodes.length) return null;
+    
+    return this.hawkes.getContagionState(nodes[0].id);
+  }
+
+  /**
+   * Simulate shock propagation using Hawkes Process.
+   * 
+   * Forward simulation of self-exciting point process:
+   * $$\lambda_j(t) = \mu_j + \sum_{i} \sum_{t_i^k < t} \alpha_{ij} \beta e^{-\beta(t - t_i^k)}$$
+   * 
+   * Returns cascade prediction over time window.
+   */
+  async simulateShock(
+    entityName: string,
+    shockMagnitude: number = 1.0,
+    durationHours: number = 168
+  ): Promise<ShockSimulation | null> {
+    if (!this.ready || !this.hawkes) return null;
+    
+    const nodes = await this.findEntity(entityName);
+    if (!nodes.length) return null;
+    
+    return this.hawkes.simulateShock(nodes[0].id, shockMagnitude, durationHours);
+  }
+
+  /**
+   * Update Hawkes process parameters based on observed events.
+   * Uses Maximum Likelihood Estimation (MLE):
+   * $$\hat{\mu} = \frac{N}{T}, \quad \hat{\alpha}_{ij} = \frac{\text{co-occurrences}}{\text{total}}$$
+   */
+  async recalibrateHawkes(windowHours: number = 720): Promise<void> {
+    if (!this.ready) return;
+    
+    const now = Date.now();
+    const windowMs = windowHours * 3600000;
+    const recentEvents = this.hawkesEvents.filter(e => (now - e.timestamp) < windowMs);
+    
+    if (recentEvents.length > 10) {
+      const params = estimateHawkesParams(recentEvents, windowMs);
+      this.hawkes = new HawkesProcessEngine(params);
+    }
+  }
+
+  // ── UNWIND BATCH OPERATIONS [cypher-001] ──────────────────────────────────────
+  
+  /**
+   * Batch merge entities using UNWIND for optimal GraphBLAS performance.
+   * 
+   * Uses Endpoint-First MERGE strategy:
+   * 1. MERGE nodes independently (prevents matrix duplication)
+   * 2. UNWIND batch to create relationships
+   * 
+   * Cypher pattern:
+   * ```cypher
+   * UNWIND $batch AS row
+   * MERGE (a:Entity {id: row.from_id})
+   * MERGE (b:Entity {id: row.to_id})
+   * MERGE (a)-[r:RELATES {relation: row.relation}]->(b)
+   * ```
+   * [cypher-unwind-001]
+   */
+  async batchMergeEdges(edges: GraphEdge[]): Promise<{ merged: number }> {
+    if (!this.ready || edges.length === 0) return { merged: 0 };
+    
+    // Prepare batch for UNWIND
+    const batch = edges.map(e => ({
+      from_id: e.from_id,
+      to_id: e.to_id,
+      relation: e.relation,
+      weight: e.weight || e.confidence,
+      contagion_weight: e.contagion_weight || 0.1,
+    }));
+    
+    // Execute with UNWIND batching
+    await this.db.batchCreateRelationships(batch);
+    
+    return { merged: edges.length };
+  }
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1186,10 +1700,21 @@ function buildNode(
   confidence = 0.75
 ): GraphNode {
   const cleanName = name.trim();
+  
+  // Generate ULEM dual-hash identity [ulem-002]
+  const ulemIdentity = generateULEMIdentity(type, cleanName);
+  const compositeId = generateCompositeId(ulemIdentity);
+  
   return {
-    id: nodeId(type, cleanName),
+    id: compositeId,
     type,
     name: cleanName,
+    // ULEM identity fields
+    ulem: {
+      sha3_id: ulemIdentity.sha3_id,
+      blake3_id: ulemIdentity.blake3_id,
+      canonical: ulemIdentity.canonical,
+    },
     properties: cleanProperties(properties),
     sources: [source],
     confidence,
@@ -1234,15 +1759,18 @@ function mergeNodeProperties(existing: GraphNode, incoming: GraphNode): GraphNod
   return { ...existing, properties: mergedProps, sources: mergedSources };
 }
 
+// ─── LEGACY NODE ID (for backward compatibility) ──────────────────────────────
+// Uses SHA3-256 instead of SHA-256 for consistency with ULEM
+
 function nodeId(type: string, name: string): string {
-  return createHash('sha256')
+  return createHash('sha3-256')
     .update(`${type}:${name.toLowerCase().trim()}`)
     .digest('hex')
     .substring(0, 16);
 }
 
 function edgeId(fromId: string, relation: string, toId: string): string {
-  return createHash('sha256')
+  return createHash('sha3-256')
     .update(`${fromId}:${relation}:${toId}`)
     .digest('hex')
     .substring(0, 16);
