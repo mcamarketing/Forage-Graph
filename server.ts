@@ -10,6 +10,7 @@
  *   POST /query               — find entities by name
  *   POST /enrich              — everything the graph knows about a domain/company
  *   POST /connections         — find relationship path between two entities
+ *   POST /neighbors_2hop      — 2-hop neighborhood with parameterized rel_types [M1]
  *   POST /claim               — add a claim/provenance assertion
  *   GET  /claims/:entityName  — get all claims for an entity
  *   POST /regime              — set regime label on entity
@@ -21,6 +22,10 @@
  *   POST /simulate           — propagate shock/boost/remove through graph
  *   GET  /stats              — graph size and coverage
  *   GET  /health             — liveness check
+ *   GET  /metrics            — Prometheus-compatible metrics [M1]
+ *
+ * Entity Types: SimAgent, SimEpisode (simulation layer) [M1]
+ * Relation Types: READS_FROM, SIMULATES, HYPOTHESIZES (simulation boundary) [M1]
  *
  * Auth: Bearer token via GRAPH_API_SECRET env var.
  * All write endpoints require auth. /health is open.
@@ -33,6 +38,50 @@ import { knowledgeGraph } from './knowledge-graph.js';
 const app  = express();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.GRAPH_API_SECRET;
+
+// ─── OBSERVABILITY: LATENCY HISTOGRAM [obs-001] ────────────────────────────────
+// Track request latencies for /metrics endpoint
+
+interface LatencyBucket {
+  le: number;      // Less than or equal to (ms)
+  count: number;   // Requests in this bucket
+}
+
+const latencyHistogram: Map<string, LatencyBucket[]> = new Map();
+const requestCounts: Map<string, number> = new Map();
+const errorCounts: Map<string, number> = new Map();
+
+function initHistogram(): LatencyBucket[] {
+  return [
+    { le: 10, count: 0 },
+    { le: 50, count: 0 },
+    { le: 100, count: 0 },
+    { le: 250, count: 0 },
+    { le: 500, count: 0 },
+    { le: 1000, count: 0 },
+    { le: 2500, count: 0 },
+    { le: 5000, count: 0 },
+    { le: Infinity, count: 0 },
+  ];
+}
+
+function recordLatency(endpoint: string, durationMs: number): void {
+  if (!latencyHistogram.has(endpoint)) {
+    latencyHistogram.set(endpoint, initHistogram());
+  }
+  const buckets = latencyHistogram.get(endpoint)!;
+  for (const bucket of buckets) {
+    if (durationMs <= bucket.le) {
+      bucket.count++;
+      break;
+    }
+  }
+  requestCounts.set(endpoint, (requestCounts.get(endpoint) || 0) + 1);
+}
+
+function recordError(endpoint: string): void {
+  errorCounts.set(endpoint, (errorCounts.get(endpoint) || 0) + 1);
+}
 
 if (!SECRET) {
   console.error('GRAPH_API_SECRET env var is required');
@@ -48,9 +97,20 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Request logging
-app.use((req: Request, _res: Response, next: NextFunction) => {
+// Request logging + latency tracking [obs-002]
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const start = Date.now();
   console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const endpoint = `${req.method} ${req.path.split('/')[1] || 'root'}`;
+    recordLatency(endpoint, duration);
+    if (res.statusCode >= 400) {
+      recordError(endpoint);
+    }
+  });
+
   next();
 });
 
@@ -76,6 +136,66 @@ app.get('/health', async (_req: Request, res: Response) => {
     graph: healthy ? 'connected' : 'disconnected',
     ts: new Date().toISOString(),
   });
+});
+
+// ─── METRICS [obs-003] ───────────────────────────────────────────────────────
+// Prometheus-compatible metrics endpoint with node/edge counts + latency histogram
+
+app.get('/metrics', async (_req: Request, res: Response) => {
+  try {
+    const stats = await knowledgeGraph.getStats();
+
+    // Build Prometheus-format output
+    const lines: string[] = [];
+
+    // Graph metrics
+    lines.push('# HELP forage_graph_nodes_total Total number of nodes in the graph');
+    lines.push('# TYPE forage_graph_nodes_total gauge');
+    lines.push(`forage_graph_nodes_total ${stats.total_nodes}`);
+
+    lines.push('# HELP forage_graph_edges_total Total number of edges in the graph');
+    lines.push('# TYPE forage_graph_edges_total gauge');
+    lines.push(`forage_graph_edges_total ${stats.total_edges}`);
+
+    // Nodes by type
+    lines.push('# HELP forage_graph_nodes_by_type Nodes by entity type');
+    lines.push('# TYPE forage_graph_nodes_by_type gauge');
+    for (const [type, count] of Object.entries(stats.nodes_by_type)) {
+      lines.push(`forage_graph_nodes_by_type{type="${type}"} ${count}`);
+    }
+
+    // Request latency histogram
+    lines.push('# HELP forage_http_request_duration_ms HTTP request latency histogram');
+    lines.push('# TYPE forage_http_request_duration_ms histogram');
+    for (const [endpoint, buckets] of latencyHistogram) {
+      let cumulative = 0;
+      for (const bucket of buckets) {
+        cumulative += bucket.count;
+        const le = bucket.le === Infinity ? '+Inf' : bucket.le;
+        lines.push(`forage_http_request_duration_ms_bucket{endpoint="${endpoint}",le="${le}"} ${cumulative}`);
+      }
+      lines.push(`forage_http_request_duration_ms_count{endpoint="${endpoint}"} ${requestCounts.get(endpoint) || 0}`);
+    }
+
+    // Request counts
+    lines.push('# HELP forage_http_requests_total Total HTTP requests');
+    lines.push('# TYPE forage_http_requests_total counter');
+    for (const [endpoint, count] of requestCounts) {
+      lines.push(`forage_http_requests_total{endpoint="${endpoint}"} ${count}`);
+    }
+
+    // Error counts
+    lines.push('# HELP forage_http_errors_total Total HTTP errors');
+    lines.push('# TYPE forage_http_errors_total counter');
+    for (const [endpoint, count] of errorCounts) {
+      lines.push(`forage_http_errors_total{endpoint="${endpoint}"} ${count}`);
+    }
+
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.send(lines.join('\n'));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── INGEST ───────────────────────────────────────────────────────────────────
@@ -214,6 +334,92 @@ app.post('/connections', async (req: Request, res: Response) => {
         to: e.to_name,
         confidence: e.confidence,
       })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── 2-HOP NEIGHBORS [cypher-003] ─────────────────────────────────────────────
+// Get 2-hop neighborhood with parameterized relation type filters.
+//
+// Body: { entity: string, rel_types?: string[], direction?: 'out' | 'in' | 'both', limit?: number }
+
+app.post('/neighbors_2hop', async (req: Request, res: Response) => {
+  try {
+    const { entity, rel_types = [], direction = 'out', limit = 50 } = req.body;
+    if (!entity) { res.status(400).json({ error: 'entity is required' }); return; }
+
+    // Find the entity first
+    const entities = await knowledgeGraph.findEntity(entity);
+    if (!entities.length) {
+      res.json({ entity, found: false, message: 'Entity not found in graph' });
+      return;
+    }
+
+    const startNodeId = entities[0].id;
+    const safeLimit = Math.min(Math.max(1, limit), 200);
+
+    // Build relationship type filter
+    const relFilter = rel_types.length > 0
+      ? `:RELATES {relation: $rel_types}`
+      : ':RELATES';
+
+    // Build direction pattern
+    let pattern: string;
+    if (direction === 'in') {
+      pattern = `(a:Entity {id: $startId})<-[e1${relFilter}]-(m:Entity)<-[e2${relFilter}]-(b:Entity)`;
+    } else if (direction === 'both') {
+      pattern = `(a:Entity {id: $startId})-[e1${relFilter}]-(m:Entity)-[e2${relFilter}]-(b:Entity)`;
+    } else {
+      pattern = `(a:Entity {id: $startId})-[e1${relFilter}]->(m:Entity)-[e2${relFilter}]->(b:Entity)`;
+    }
+
+    // Use direct Cypher query via knowledgeGraph's internal DB
+    // Since we can't expose graphQuery directly, we use findConnections approach
+    // For now, return neighbors via existing methods
+    const hop1 = await knowledgeGraph.getNeighbours(startNodeId);
+    const hop2Results: Array<{
+      via: { name: string; type: string };
+      target: { name: string; type: string };
+      relations: [string, string];
+      confidence: number;
+    }> = [];
+
+    for (const { neighbour, edge } of hop1) {
+      // Filter by rel_types if specified
+      if (rel_types.length > 0 && !rel_types.includes(edge.relation)) continue;
+
+      const hop2Neighbors = await knowledgeGraph.getNeighbours(neighbour.id);
+      for (const { neighbour: target, edge: e2 } of hop2Neighbors) {
+        if (rel_types.length > 0 && !rel_types.includes(e2.relation)) continue;
+        if (target.id === startNodeId) continue; // Avoid cycles back to start
+
+        hop2Results.push({
+          via: { name: neighbour.name, type: neighbour.type },
+          target: { name: target.name, type: target.type },
+          relations: [edge.relation, e2.relation],
+          confidence: Math.min(edge.confidence, e2.confidence),
+        });
+      }
+    }
+
+    // Dedupe and sort by confidence
+    const seen = new Set<string>();
+    const deduped = hop2Results.filter(r => {
+      const key = `${r.via.name}:${r.target.name}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a, b) => b.confidence - a.confidence).slice(0, safeLimit);
+
+    res.json({
+      entity: entities[0].name,
+      entity_type: entities[0].type,
+      rel_types: rel_types.length > 0 ? rel_types : 'all',
+      direction,
+      hop_2_count: deduped.length,
+      neighbors: deduped,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -69,7 +69,12 @@ export type EntityType =
   | 'Topic'
   | 'Narrative'
   | 'Actor'                // Political/financial actors
-  | 'Network';             // Organizational networks
+  | 'Network'              // Organizational networks
+
+  // Simulation Layer [sim-001]
+  // SimAgents can READS_FROM Reality but cannot modify it
+  | 'SimAgent'             // Simulation agent (AI personas, what-if actors)
+  | 'SimEpisode';          // Simulation episode (counterfactual scenarios)
 
 export type RelationType =
   // FIBO Role Pattern Relationships [fibo-role-001]
@@ -136,7 +141,13 @@ export type RelationType =
   | 'related_to'
   | 'opposes'
   | 'supports'
-  | 'influences';           // Bidirectional influence
+  | 'influences'            // Bidirectional influence
+
+  // Simulation Layer [sim-002]
+  // SimAgent → Reality boundary (read-only)
+  | 'READS_FROM'            // SimAgent reads from Reality node (immutable)
+  | 'SIMULATES'             // SimEpisode simulates scenario
+  | 'HYPOTHESIZES';         // SimAgent hypothesizes connection
 
 export type Regime = 'normal' | 'stressed' | 'pre_tipping' | 'post_event';
 
@@ -267,9 +278,60 @@ class KnowledgeStore {
         `CREATE INDEX FOR (n:Entity) ON (n.type)`,
         {}
       ).catch(() => {});
+
+      // Simulation Layer indexes [sim-003]
+      await this.graphQuery(
+        `CREATE INDEX FOR (n:Entity) ON (n.is_simulation)`,
+        {}
+      ).catch(() => {});
     } catch {
       // Indexes are optional — graph still works without them
     }
+  }
+
+  // ── SIMULATION BOUNDARY VALIDATION [sim-004] ────────────────────────────────
+  // SimAgents can only READS_FROM Reality nodes — never modify them
+
+  private isSimulationType(type: EntityType): boolean {
+    return type === 'SimAgent' || type === 'SimEpisode';
+  }
+
+  private isSimulationRelation(relation: RelationType): boolean {
+    return relation === 'READS_FROM' || relation === 'SIMULATES' || relation === 'HYPOTHESIZES';
+  }
+
+  /**
+   * Validate simulation boundary constraint.
+   * SimAgents can READS_FROM Reality, but cannot create causal edges to Reality.
+   * Returns true if the edge is valid, false if it violates simulation boundary.
+   */
+  validateSimulationBoundary(
+    fromType: EntityType,
+    toType: EntityType,
+    relation: RelationType
+  ): { valid: boolean; reason?: string } {
+    const fromIsSim = this.isSimulationType(fromType);
+    const toIsSim = this.isSimulationType(toType);
+
+    // SimAgent → Reality: only READS_FROM allowed
+    if (fromIsSim && !toIsSim) {
+      if (relation !== 'READS_FROM') {
+        return {
+          valid: false,
+          reason: `SimAgent cannot create '${relation}' edge to Reality. Use READS_FROM for read-only access.`,
+        };
+      }
+    }
+
+    // Reality → SimAgent: not allowed (Reality doesn't know about simulations)
+    if (!fromIsSim && toIsSim) {
+      return {
+        valid: false,
+        reason: 'Reality nodes cannot reference SimAgents. Simulation is isolated.',
+      };
+    }
+
+    return { valid: true };
   }
 
   // ── GETTERS FOR EXTERNAL MODULES ────────────────────────────────────────────
