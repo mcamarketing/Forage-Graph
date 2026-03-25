@@ -535,6 +535,71 @@ app.get('/stats', async (_req: Request, res: Response) => {
   }
 });
 
+// ─── METRICS [M1-obs-001] ───────────────────────────────────────────────────────
+// Prometheus-compatible metrics endpoint for observability
+
+const metrics = {
+  requests: { total: 0, errors: 0, by_endpoint: {} as Record<string, number> },
+  queries: { latency_ms_sum: 0, latency_ms_count: 0, latencies: [] as number[] },
+  ingestion: { entities_added: 0, relationships_added: 0, last_batch: null as string | null },
+};
+
+app.get('/metrics', async (_req: Request, res: Response) => {
+  const stats = await knowledgeGraph.getStats().catch(() => ({ total_nodes: 0, total_edges: 0 }));
+  
+  const avgLatency = metrics.queries.latency_ms_count > 0 
+    ? metrics.queries.latency_ms_sum / metrics.queries.latency_ms_count 
+    : 0;
+  
+  res.set('Content-Type', 'text/plain');
+  res.send(`# HELP graph_entities_total Total number of entities in graph
+# TYPE graph_entities_total gauge
+graph_entities_total ${stats.total_nodes}
+
+# HELP graph_relationships_total Total number of relationships in graph
+# TYPE graph_relationships_total gauge
+graph_relationships_total ${stats.total_edges}
+
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total ${metrics.requests.total}
+
+# HELP http_requests_errors_total Total HTTP errors
+# TYPE http_requests_errors_total counter
+http_requests_errors_total ${metrics.requests.errors}
+
+# HELP query_latency_avg_ms Average query latency in milliseconds
+# TYPE query_latency_avg_ms gauge
+query_latency_avg_ms ${avgLatency.toFixed(2)}
+
+# HELP ingestion_entities_total Total entities ingested since start
+# TYPE ingestion_entities_total counter
+ingestion_entities_total ${metrics.ingestion.entities_added}
+
+# HELP ingestion_relationships_total Total relationships ingested since start
+# TYPE ingestion_relationships_total counter
+ingestion_relationships_total ${metrics.ingestion.relationships_added}
+`);
+});
+
+// Record metrics helper
+function recordMetric(type: 'request' | 'error' | 'query_latency' | 'ingestion', data?: any) {
+  if (type === 'request') {
+    metrics.requests.total++;
+  } else if (type === 'error') {
+    metrics.requests.errors++;
+  } else if (type === 'query_latency' && data?.ms) {
+    metrics.queries.latency_ms_sum += data.ms;
+    metrics.queries.latency_ms_count++;
+    metrics.queries.latencies.push(data.ms);
+    if (metrics.queries.latencies.length > 100) metrics.queries.latencies.shift();
+  } else if (type === 'ingestion' && data) {
+    metrics.ingestion.entities_added += data.entities || 0;
+    metrics.ingestion.relationships_added += data.relationships || 0;
+    metrics.ingestion.last_batch = new Date().toISOString();
+  }
+}
+
 // ─── CLAIMS ───────────────────────────────────────────────────────────────────
 // Add a provenance claim for an entity.
 //
