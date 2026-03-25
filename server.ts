@@ -23,6 +23,9 @@
  *   GET  /stats              — graph size and coverage
  *   GET  /health             — liveness check
  *   GET  /metrics            — Prometheus-compatible metrics [M1]
+ *   GET  /export             — export entire graph as JSON backup [backup-001]
+ *   POST /import             — import graph from JSON backup [backup-001]
+ *   POST /ingest_raw_batch   — batch ingest entities with relationships
  *
  * Entity Types: SimAgent, SimEpisode (simulation layer) [M1]
  * Relation Types: READS_FROM, SIMULATES, HYPOTHESIZES (simulation boundary) [M1]
@@ -876,6 +879,81 @@ app.post('/recalibrate', async (req: Request, res: Response) => {
     const { window_hours = 720 } = req.body;
     await knowledgeGraph.recalibrateHawkes(window_hours);
     res.json({ success: true, message: 'Hawkes process recalibrated' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── BACKUP / EXPORT [backup-002] ─────────────────────────────────────────────
+// Full graph export for disaster recovery
+
+app.get('/export', async (_req: Request, res: Response) => {
+  try {
+    const backup = await knowledgeGraph.exportAll();
+    res.setHeader('Content-Disposition', `attachment; filename="forage-graph-backup-${new Date().toISOString().split('T')[0]}.json"`);
+    res.json(backup);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/import', async (req: Request, res: Response) => {
+  try {
+    const backup = req.body;
+    if (!backup || !backup.entities) {
+      res.status(400).json({ error: 'Invalid backup format. Must include entities array.' });
+      return;
+    }
+    const result = await knowledgeGraph.importBackup(backup);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ingest raw batch - for n8n workflows that prepare structured entity batches
+app.post('/ingest_raw_batch', async (req: Request, res: Response) => {
+  try {
+    const { batch } = req.body;
+    if (!batch || !Array.isArray(batch)) {
+      res.status(400).json({ error: 'batch array is required' });
+      return;
+    }
+
+    let entities_added = 0;
+    let relationships_added = 0;
+
+    for (const item of batch) {
+      // Add entity
+      if (item.name && item.type) {
+        await knowledgeGraph.addEntities([{
+          type: item.type,
+          name: item.name,
+          properties: item.properties || {},
+          confidence: item.confidence || 0.9,
+          source: item.source || 'raw_batch'
+        }]);
+        entities_added++;
+      }
+
+      // Add relationships
+      if (item.relationships && Array.isArray(item.relationships)) {
+        for (const rel of item.relationships) {
+          await knowledgeGraph.addConnections([{
+            from_type: item.type,
+            from_name: item.name,
+            to_type: rel.targetType,
+            to_name: rel.targetName,
+            relation: rel.relation,
+            confidence: rel.confidence || 0.8,
+            source: item.source || 'raw_batch'
+          }]);
+          relationships_added++;
+        }
+      }
+    }
+
+    res.status(201).json({ success: true, entities_added, relationships_added });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

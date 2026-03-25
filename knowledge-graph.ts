@@ -335,7 +335,7 @@ class KnowledgeStore {
   }
 
   // ── GETTERS FOR EXTERNAL MODULES ────────────────────────────────────────────
-  
+
   /**
    * Get underlying Redis client for link prediction modules.
    * [graphblas-002]
@@ -349,6 +349,55 @@ class KnowledgeStore {
    */
   getGraphName(): string {
     return this.graphName;
+  }
+
+  // ── EXPORT ALL [backup-003] ──────────────────────────────────────────────────
+
+  /**
+   * Get all nodes from the graph for backup/export.
+   */
+  async getAllNodes(): Promise<GraphNode[]> {
+    const rows = await this.graphQuery(
+      `MATCH (n:Entity) RETURN n`,
+      {}
+    );
+    return rows.map(row => {
+      const n = row.n || row[0] || row;
+      return {
+        id: n.id || n.properties?.id,
+        type: n.type || n.properties?.type || 'Entity',
+        name: n.name || n.properties?.name || '',
+        properties: n.properties || {},
+        sources: n.sources || n.properties?.sources || [],
+        confidence: n.confidence || n.properties?.confidence || 0.5,
+        call_count: n.call_count || n.properties?.call_count || 1,
+        first_seen: n.first_seen || n.properties?.first_seen,
+        last_seen: n.last_seen || n.properties?.last_seen,
+      } as GraphNode;
+    });
+  }
+
+  /**
+   * Get all edges from the graph for backup/export.
+   */
+  async getAllEdges(): Promise<GraphEdge[]> {
+    const rows = await this.graphQuery(
+      `MATCH (a:Entity)-[r:RELATES]->(b:Entity) RETURN a.id AS from_id, a.name AS from_name, r, b.id AS to_id, b.name AS to_name`,
+      {}
+    );
+    return rows.map(row => ({
+      id: row.r?.id || `${row.from_id}-${row.to_id}`,
+      from_id: row.from_id,
+      to_id: row.to_id,
+      from_name: row.from_name,
+      to_name: row.to_name,
+      relation: row.r?.relation || row.r?.properties?.relation || 'related_to',
+      properties: row.r?.properties || {},
+      confidence: row.r?.confidence || row.r?.properties?.confidence || 0.5,
+      call_count: row.r?.call_count || 1,
+      first_seen: row.r?.first_seen,
+      last_seen: row.r?.last_seen,
+    } as GraphEdge));
   }
 
   // ── BATCH OPERATIONS [cypher-002] ─────────────────────────────────────────────
@@ -1747,8 +1796,83 @@ export class KnowledgeGraph {
     
     // Execute with UNWIND batching
     await this.db.batchCreateRelationships(batch);
-    
+
     return { merged: edges.length };
+  }
+
+  // ─── BACKUP / EXPORT [backup-001] ─────────────────────────────────────────────
+  // Full graph export for disaster recovery
+
+  /**
+   * Export all entities and relationships as JSON backup.
+   * Returns complete graph state for restoration.
+   */
+  async exportAll(): Promise<{
+    version: string;
+    exported_at: string;
+    stats: GraphStats;
+    entities: GraphNode[];
+    relationships: GraphEdge[];
+  }> {
+    if (!this.ready) throw new Error('Graph not initialized');
+
+    // Get all entities
+    const entities = await this.db.getAllNodes();
+
+    // Get all edges
+    const relationships = await this.db.getAllEdges();
+
+    // Get stats
+    const stats = await this.getStats();
+
+    return {
+      version: '1.0',
+      exported_at: new Date().toISOString(),
+      stats,
+      entities,
+      relationships,
+    };
+  }
+
+  /**
+   * Import entities and relationships from JSON backup.
+   * Merges with existing data (does not wipe first).
+   */
+  async importBackup(backup: {
+    entities: Array<{ type: string; name: string; properties?: Record<string, any>; confidence?: number; source?: string }>;
+    relationships?: Array<{ from_type: string; from_name: string; to_type: string; to_name: string; relation: string; confidence?: number; source?: string }>;
+  }): Promise<{ entities_imported: number; relationships_imported: number }> {
+    if (!this.ready) throw new Error('Graph not initialized');
+
+    let entities_imported = 0;
+    let relationships_imported = 0;
+    const now = new Date().toISOString();
+
+    // Import entities
+    for (const e of backup.entities || []) {
+      const node = buildNode(
+        e.type as EntityType,
+        e.name,
+        e.properties || {},
+        e.source || 'backup_import',
+        e.confidence || 0.9
+      );
+      await this.db.setNode({ ...node, first_seen: now, last_seen: now });
+      entities_imported++;
+    }
+
+    // Import relationships
+    for (const r of backup.relationships || []) {
+      const fromNode = buildNode(r.from_type as EntityType, r.from_name, {}, 'backup_import');
+      const toNode = buildNode(r.to_type as EntityType, r.to_name, {}, 'backup_import');
+      await this.db.setNode({ ...fromNode, first_seen: now, last_seen: now });
+      await this.db.setNode({ ...toNode, first_seen: now, last_seen: now });
+      const edge = buildEdge(fromNode, toNode, r.relation as RelationType, r.source || 'backup_import', r.confidence || 0.8);
+      await this.db.setEdge({ ...edge, first_seen: now, last_seen: now });
+      relationships_imported++;
+    }
+
+    return { entities_imported, relationships_imported };
   }
 }
 

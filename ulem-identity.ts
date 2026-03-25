@@ -1,9 +1,13 @@
 /**
- * ULEM v1.3 Identity Module — Unified Linguistic Entity Model
+ * ULEM v1.4 Identity Module — Unified Linguistic Entity Model
  *
  * Dual-hash identity system for deterministic entity resolution:
  * - Primary hash: SHA3-256 (cryptographic, collision-resistant)
  * - Secondary hash: Blake3 (fast, used for dedup/pre-filter)
+ *
+ * Requirements (HARDENED):
+ * 1. entity_type IS included in canonical string to prevent cross-class collisions
+ * 2. content_hash MUST be set by caller from blake3(raw_payload_bytes) before persistence
  *
  * This ensures entities are uniquely identified across data sources
  * while enabling fast lookups via the secondary hash.
