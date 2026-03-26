@@ -1636,24 +1636,28 @@ export class KnowledgeGraph {
 
         // Look up "from" entity
         const fromEntities = await this.findEntity(c.from_name);
-        if (fromEntities.length > 0) {
+        if (fromEntities.length > 0 && fromEntities[0].id) {
           fromNode = fromEntities[0];
+          console.log(`[CONN] Found existing from: ${c.from_name} -> id=${fromNode.id}`);
         } else {
-          // Create new entity if not found
+          // Create new entity if not found or has no ID
           const fromType: EntityType = c.from_type || 'LegalEntity';
           fromNode = buildNode(fromType, c.from_name, {}, c.source || 'direct_inject');
           await this.db.setNode({ ...fromNode, first_seen: now, last_seen: now });
+          console.log(`[CONN] Created new from: ${c.from_name} -> id=${fromNode.id}`);
         }
 
         // Look up "to" entity
         const toEntities = await this.findEntity(c.to_name);
-        if (toEntities.length > 0) {
+        if (toEntities.length > 0 && toEntities[0].id) {
           toNode = toEntities[0];
+          console.log(`[CONN] Found existing to: ${c.to_name} -> id=${toNode.id}`);
         } else {
-          // Create new entity if not found
+          // Create new entity if not found or has no ID
           const toType: EntityType = c.to_type || 'LegalEntity';
           toNode = buildNode(toType, c.to_name, {}, c.source || 'direct_inject');
           await this.db.setNode({ ...toNode, first_seen: now, last_seen: now });
+          console.log(`[CONN] Created new to: ${c.to_name} -> id=${toNode.id}`);
         }
 
         const edge = buildEdge(fromNode, toNode, relation, c.source || 'direct_inject', c.confidence || 0.75);
