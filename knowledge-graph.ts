@@ -1601,11 +1601,12 @@ export class KnowledgeGraph {
   }
 
   async addConnections(connections: Array<{
-    from_type: EntityType;
+    from_type?: EntityType;
     from_name: string;
-    to_type: EntityType;
+    to_type?: EntityType;
     to_name: string;
-    relation: RelationType;
+    relation?: RelationType;
+    relationship?: string;  // Alias for relation
     properties?: Record<string, any>;
     confidence?: number;
     source?: string;
@@ -1625,30 +1626,51 @@ export class KnowledgeGraph {
     const now = new Date().toISOString();
 
     for (const c of connections) {
-      const fromNode = buildNode(c.from_type, c.from_name, {}, c.source || 'direct_inject');
-      const toNode = buildNode(c.to_type, c.to_name, {}, c.source || 'direct_inject');
+      try {
+        // Look up existing entities by name to get their types
+        let fromType: EntityType = c.from_type || 'LegalEntity';
+        let toType: EntityType = c.to_type || 'LegalEntity';
 
-      // Ensure both nodes exist
-      if (!await this.db.getNode(fromNode.id)) {
-        await this.db.setNode({ ...fromNode, first_seen: now, last_seen: now });
-      }
-      if (!await this.db.getNode(toNode.id)) {
-        await this.db.setNode({ ...toNode, first_seen: now, last_seen: now });
-      }
+        if (!c.from_type) {
+          const existing = await this.findEntity(c.from_name);
+          if (existing.length > 0) fromType = existing[0].type;
+        }
+        if (!c.to_type) {
+          const existing = await this.findEntity(c.to_name);
+          if (existing.length > 0) toType = existing[0].type;
+        }
 
-      const edge = buildEdge(fromNode, toNode, c.relation, c.source || 'direct_inject', c.confidence || 0.75);
-      if (c.properties) edge.properties = { ...edge.properties, ...c.properties };
+        // Handle relationship alias
+        const relation = (c.relation || c.relationship || 'related_to') as RelationType;
 
-      const existing = await this.db.getEdge(edge.id);
-      if (existing) {
-        existing.call_count = (existing.call_count || 1) + 1;
-        existing.confidence = Math.min(0.99, existing.confidence + 0.05);
-        existing.last_seen = now;
-        await this.db.setEdge(existing);
-        merged++;
-      } else {
-        await this.db.setEdge({ ...edge, first_seen: now, last_seen: now });
-        added++;
+        const fromNode = buildNode(fromType, c.from_name, {}, c.source || 'direct_inject');
+        const toNode = buildNode(toType, c.to_name, {}, c.source || 'direct_inject');
+
+        // Ensure both nodes exist
+        if (!await this.db.getNode(fromNode.id)) {
+          await this.db.setNode({ ...fromNode, first_seen: now, last_seen: now });
+        }
+        if (!await this.db.getNode(toNode.id)) {
+          await this.db.setNode({ ...toNode, first_seen: now, last_seen: now });
+        }
+
+        const edge = buildEdge(fromNode, toNode, relation, c.source || 'direct_inject', c.confidence || 0.75);
+        if (c.properties) edge.properties = { ...edge.properties, ...c.properties };
+
+        const existing = await this.db.getEdge(edge.id);
+        if (existing) {
+          existing.call_count = (existing.call_count || 1) + 1;
+          existing.confidence = Math.min(0.99, existing.confidence + 0.05);
+          existing.last_seen = now;
+          await this.db.setEdge(existing);
+          merged++;
+        } else {
+          await this.db.setEdge({ ...edge, first_seen: now, last_seen: now });
+          added++;
+        }
+      } catch (err: any) {
+        console.error(`[GRAPH] Connection ${c.from_name} -> ${c.to_name} failed:`, err.message);
+        // Continue processing other connections
       }
     }
 
