@@ -1627,30 +1627,32 @@ export class KnowledgeGraph {
 
     for (const c of connections) {
       try {
-        // Look up existing entities by name to get their types
-        let fromType: EntityType = c.from_type || 'LegalEntity';
-        let toType: EntityType = c.to_type || 'LegalEntity';
-
-        if (!c.from_type) {
-          const existing = await this.findEntity(c.from_name);
-          if (existing.length > 0) fromType = existing[0].type;
-        }
-        if (!c.to_type) {
-          const existing = await this.findEntity(c.to_name);
-          if (existing.length > 0) toType = existing[0].type;
-        }
-
         // Handle relationship alias
         const relation = (c.relation || c.relationship || 'related_to') as RelationType;
 
-        const fromNode = buildNode(fromType, c.from_name, {}, c.source || 'direct_inject');
-        const toNode = buildNode(toType, c.to_name, {}, c.source || 'direct_inject');
+        // Try to find existing entities first
+        let fromNode: GraphNode | null = null;
+        let toNode: GraphNode | null = null;
 
-        // Ensure both nodes exist
-        if (!await this.db.getNode(fromNode.id)) {
+        // Look up "from" entity
+        const fromEntities = await this.findEntity(c.from_name);
+        if (fromEntities.length > 0) {
+          fromNode = fromEntities[0];
+        } else {
+          // Create new entity if not found
+          const fromType: EntityType = c.from_type || 'LegalEntity';
+          fromNode = buildNode(fromType, c.from_name, {}, c.source || 'direct_inject');
           await this.db.setNode({ ...fromNode, first_seen: now, last_seen: now });
         }
-        if (!await this.db.getNode(toNode.id)) {
+
+        // Look up "to" entity
+        const toEntities = await this.findEntity(c.to_name);
+        if (toEntities.length > 0) {
+          toNode = toEntities[0];
+        } else {
+          // Create new entity if not found
+          const toType: EntityType = c.to_type || 'LegalEntity';
+          toNode = buildNode(toType, c.to_name, {}, c.source || 'direct_inject');
           await this.db.setNode({ ...toNode, first_seen: now, last_seen: now });
         }
 
