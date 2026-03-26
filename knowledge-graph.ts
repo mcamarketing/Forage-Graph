@@ -246,18 +246,66 @@ export interface ContagionStats {
 class KnowledgeStore {
   private client: ReturnType<typeof createClient> | null = null;
   private graphName = 'forage_v1';
+  private connectionReady = false;
 
   async init(): Promise<void> {
-    const url = process.env.FALKORDB_URL || process.env.REDIS_URL || 'redis://localhost:6379';
-    this.client = createClient({ url });
-    this.client.on('error', (err) => {
-      // Silent — storage errors must never surface to caller
-      if (process.env.NODE_ENV !== 'production') console.error('KV error:', err.message);
+    const url = process.env.FALKORDB_URL || process.env.REDIS_URL;
+    if (!url) {
+      console.error('[GRAPH] ERROR: FALKORDB_URL or REDIS_URL environment variable required');
+      throw new Error('FALKORDB_URL or REDIS_URL environment variable required');
+    }
+
+    const maskedUrl = url.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+    console.log(`[GRAPH] Connecting to FalkorDB at ${maskedUrl}...`);
+
+    this.client = createClient({
+      url,
+      socket: {
+        connectTimeout: 15000,
+        reconnectStrategy: (retries: number) => {
+          console.error(`[GRAPH] Redis reconnect attempt ${retries}`);
+          if (retries > 10) {
+            console.error('[GRAPH] Max reconnect attempts reached');
+            return new Error('Max reconnect attempts reached');
+          }
+          return Math.min(retries * 500, 5000);
+        }
+      }
     });
+
+    // Log all errors - don't silence in production!
+    this.client.on('error', (err) => {
+      console.error('[GRAPH ERROR]', err.message);
+      this.connectionReady = false;
+    });
+
+    this.client.on('connect', () => {
+      console.log('[GRAPH] Connected to FalkorDB');
+      this.connectionReady = true;
+    });
+
+    this.client.on('reconnecting', () => {
+      console.log('[GRAPH] Reconnecting to FalkorDB...');
+      this.connectionReady = false;
+    });
+
     await this.client.connect();
+
+    // Verify connection actually works
+    const pong = await this.client.ping();
+    if (pong !== 'PONG') {
+      throw new Error('FalkorDB ping failed - connection not working');
+    }
+
+    this.connectionReady = true;
+    console.log('[GRAPH] FalkorDB connection verified (PONG received)');
 
     // Create indexes for fast lookups
     await this.ensureIndexes();
+  }
+
+  isConnectionReady(): boolean {
+    return this.connectionReady && this.client !== null;
   }
 
   private async ensureIndexes(): Promise<void> {
@@ -453,45 +501,143 @@ class KnowledgeStore {
     if (!this.client) return [];
     try {
       // FalkorDB uses GRAPH.QUERY command
-      const paramStr = Object.entries(params)
-        .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
-        .join(', ');
+      // Inline params directly into query (most reliable across FalkorDB versions)
+      let q = query;
+      for (const [k, v] of Object.entries(params)) {
+        const replacement = typeof v === 'string' ? `"${v.replace(/"/g, '\\"')}"` : JSON.stringify(v);
+        q = q.replace(new RegExp(`\\$${k}\\b`, 'g'), replacement);
+      }
 
-      const fullQuery = paramStr ? query : query;
+      console.log('[GRAPH QUERY]', q.substring(0, 200));
       const result = await (this.client as any).sendCommand([
         'GRAPH.QUERY',
         this.graphName,
-        query,
-        '--params',
-        JSON.stringify(params),
-        '--compact',
+        q,
       ]);
+
+      // Debug: log raw result structure
+      if (result && Array.isArray(result)) {
+        console.log('[GRAPH RAW]', JSON.stringify(result).substring(0, 500));
+      }
+
       return this.parseGraphResult(result);
     } catch (err: any) {
-      // Fallback: try without params flag (older FalkorDB versions)
-      try {
-        let q = query;
-        for (const [k, v] of Object.entries(params)) {
-          q = q.replace(new RegExp(`\\$${k}`, 'g'), JSON.stringify(v));
-        }
-        const result = await (this.client as any).sendCommand([
-          'GRAPH.QUERY',
-          this.graphName,
-          q,
-        ]);
-        return this.parseGraphResult(result);
-      } catch {
-        return [];
-      }
+      console.error('[GRAPH QUERY ERROR]', err.message, 'Query:', query);
+      return [];
     }
   }
 
   private parseGraphResult(raw: any): any[] {
     if (!raw || !Array.isArray(raw)) return [];
-    // FalkorDB compact format: [header, data, stats]
+
+    // FalkorDB returns: [[headers], [[row1], [row2], ...], [stats]]
+    // Headers and values may be typed: [type_id, actual_value]
+    // Type IDs: 1=null, 2=string, 3=integer, etc.
+
+    const rawHeaders = raw[0];
     const data = raw[1];
+    const stats = raw[2];
+
     if (!data || !Array.isArray(data)) return [];
-    return data;
+
+    // Parse headers (they may also have type prefixes)
+    const headers: string[] = [];
+    if (rawHeaders && Array.isArray(rawHeaders)) {
+      for (const h of rawHeaders) {
+        const parsed = this.parseGraphElement(h);
+        headers.push(String(parsed));
+      }
+    }
+
+    // If headers exist, map data to named objects
+    if (headers.length > 0) {
+      return data.map((row: any[]) => {
+        const obj: any = {};
+        for (let i = 0; i < headers.length; i++) {
+          const colName = headers[i];
+          const value = row[i];
+          obj[colName] = this.parseGraphElement(value);
+        }
+        // If single column, also store at index 0 for backwards compat
+        if (headers.length === 1) {
+          obj[0] = obj[headers[0]];
+        }
+        return obj;
+      });
+    }
+
+    // Fallback: return raw data rows with parsed elements
+    return data.map((row: any) => Array.isArray(row) ? row.map(v => this.parseGraphElement(v)) : row);
+  }
+
+  private parseGraphElement(elem: any): any {
+    if (elem === null || elem === undefined) return null;
+
+    // Non-array values returned directly
+    if (typeof elem !== 'object' || !Array.isArray(elem)) return elem;
+
+    // FalkorDB scalar format: [type_id, value]
+    // Type IDs: 1=null, 2=string, 3=integer, 4=boolean, 5=double, 6=array, 7=edge, 8=node, 9=path
+    // Type ID might be number or string
+    if (elem.length === 2) {
+      const typeId = typeof elem[0] === 'string' ? parseInt(elem[0], 10) : elem[0];
+      const value = elem[1];
+
+      if (typeof typeId === 'number' && typeId >= 1 && typeId <= 10) {
+        if (typeId === 1) return null;           // NULL
+        if (typeId === 8) return this.parseGraphElement(value);  // NODE - recurse
+        if (typeId === 7) return this.parseGraphElement(value);  // EDGE - recurse
+        if (typeId === 6 && Array.isArray(value)) {  // ARRAY
+          return value.map(v => this.parseGraphElement(v));
+        }
+        return value;  // STRING, INTEGER, BOOLEAN, DOUBLE - return value directly
+      }
+    }
+
+    // FalkorDB node format: [internal_id, [labels], [[key, type, value], ...]]
+    if (elem.length === 3 && Array.isArray(elem[1]) && Array.isArray(elem[2])) {
+      const [internalId, labels, props] = elem;
+      const obj: any = { _internal_id: internalId, _labels: labels };
+
+      // Parse properties array: [[key, type, value], ...]
+      if (Array.isArray(props)) {
+        for (const prop of props) {
+          if (Array.isArray(prop) && prop.length >= 2) {
+            const [key, typeOrValue, maybeValue] = prop;
+            // Format: [key, type_id, value] or [key, value]
+            if (typeof typeOrValue === 'number' && typeOrValue >= 1 && typeOrValue <= 10 && maybeValue !== undefined) {
+              obj[key] = maybeValue;  // [key, type_id, value]
+            } else {
+              obj[key] = maybeValue !== undefined ? maybeValue : typeOrValue;
+            }
+          }
+        }
+      }
+      return obj;
+    }
+
+    // FalkorDB edge format: [internal_id, rel_type, src_id, dst_id, [[props...]]]
+    if (elem.length === 5 && Array.isArray(elem[4])) {
+      const [internalId, relType, srcId, dstId, props] = elem;
+      const obj: any = { _internal_id: internalId, _rel_type: relType, _src_id: srcId, _dst_id: dstId };
+
+      if (Array.isArray(props)) {
+        for (const prop of props) {
+          if (Array.isArray(prop) && prop.length >= 2) {
+            const [key, typeOrValue, maybeValue] = prop;
+            if (typeof typeOrValue === 'number' && typeOrValue >= 1 && typeOrValue <= 10 && maybeValue !== undefined) {
+              obj[key] = maybeValue;
+            } else {
+              obj[key] = maybeValue !== undefined ? maybeValue : typeOrValue;
+            }
+          }
+        }
+      }
+      return obj;
+    }
+
+    // Unknown array format, return as-is
+    return elem;
   }
 
   async getNode(id: string): Promise<GraphNode | null> {
@@ -528,8 +674,10 @@ class KnowledgeStore {
 
   async setEdge(edge: GraphEdge): Promise<void> {
     const props = this.flattenForCypher(edge);
+    // Use MERGE for nodes too - creates them if they don't exist
     await this.graphQuery(
-      `MATCH (a:Entity {id: $from_id}), (b:Entity {id: $to_id})
+      `MERGE (a:Entity {id: $from_id})
+       MERGE (b:Entity {id: $to_id})
        MERGE (a)-[e:RELATES {id: $edge_id}]->(b)
        SET e += $props`,
       {
@@ -579,16 +727,19 @@ class KnowledgeStore {
 
   async getStats(): Promise<GraphStats> {
     try {
-      const nodeCount = await this.graphQuery(`MATCH (n:Entity) RETURN count(n)`, {});
-      const edgeCount = await this.graphQuery(`MATCH ()-[e:RELATES]->() RETURN count(e)`, {});
+      const nodeCount = await this.graphQuery(`MATCH (n:Entity) RETURN count(n) AS cnt`, {});
+      const edgeCount = await this.graphQuery(`MATCH ()-[e:RELATES]->() RETURN count(e) AS cnt`, {});
       const byType = await this.graphQuery(
-        `MATCH (n:Entity) RETURN n.type, count(n) ORDER BY count(n) DESC`,
+        `MATCH (n:Entity) RETURN n.type AS type, count(n) AS cnt ORDER BY cnt DESC`,
         {}
       );
 
       const nodes_by_type: Record<string, number> = {};
       for (const row of byType) {
-        if (row[0] && row[1]) nodes_by_type[row[0]] = parseInt(row[1]);
+        // Handle both old array format [type, count] and new object format {type, cnt}
+        const typeVal = row.type ?? row[0];
+        const cntVal = row.cnt ?? row[1];
+        if (typeVal && cntVal) nodes_by_type[String(typeVal)] = parseInt(String(cntVal));
       }
 
       // Get contagion stats from Redis
@@ -604,9 +755,13 @@ class KnowledgeStore {
         }
       }
 
+      // Handle both old array format and new object format {cnt}
+      const totalNodes = nodeCount[0]?.cnt ?? nodeCount[0]?.[0] ?? 0;
+      const totalEdges = edgeCount[0]?.cnt ?? edgeCount[0]?.[0] ?? 0;
+
       return {
-        total_nodes: parseInt(nodeCount[0]?.[0] || '0'),
-        total_edges: parseInt(edgeCount[0]?.[0] || '0'),
+        total_nodes: parseInt(String(totalNodes)),
+        total_edges: parseInt(String(totalEdges)),
         nodes_by_type,
         last_updated: new Date().toISOString(),
       };
@@ -1088,7 +1243,7 @@ export class KnowledgeGraph {
     try {
       await this.db.init();
       this.ready = true;
-      
+
       // Initialize link prediction scorers
       const client = this.db.getClient();
       const graphName = this.db.getGraphName();
@@ -1096,7 +1251,7 @@ export class KnowledgeGraph {
         this.adamicAdar = new AdamicAdarScorer(client, graphName);
         this.jaccard = new JaccardScorer(client, graphName);
       }
-      
+
       // Initialize Hawkes process with default params
       this.hawkes = new HawkesProcessEngine({
         mu: 0.01,
@@ -1104,28 +1259,38 @@ export class KnowledgeGraph {
         beta: 0.1,
         gamma: 0.001,
       });
-      
-      console.log('Knowledge graph initialised with Reality Graph features');
+
+      console.log('[GRAPH] Knowledge graph initialised with Reality Graph features');
     } catch (err: any) {
-      console.error('Knowledge graph init failed:', err.message);
+      console.error('[GRAPH] Knowledge graph init failed:', err.message);
       this.ready = false;
+      throw err;  // Don't swallow - let caller know
     }
   }
 
   async isHealthy(): Promise<boolean> {
-    return this.ready && await this.db.isHealthy();
+    return this.ready && this.db.isConnectionReady() && await this.db.isHealthy();
   }
 
-  // Fire and forget — called after every tool response
+  // Called after every tool response - now with proper error handling
   async ingest(toolName: string, result: any): Promise<void> {
-    if (!this.ready) return;
-    try {
-      const { nodes, edges } = this.extract(toolName, result);
-      if (nodes.length === 0 && edges.length === 0) return;
-      await this.merge(nodes, edges);
-    } catch {
-      // Silent always
+    if (!this.ready) {
+      console.error('[GRAPH] Ingest called but graph not ready');
+      throw new Error('Graph not initialized');
     }
+    if (!this.db.isConnectionReady()) {
+      console.error('[GRAPH] Ingest called but DB connection not ready');
+      throw new Error('Database connection not ready');
+    }
+
+    const { nodes, edges } = this.extract(toolName, result);
+    if (nodes.length === 0 && edges.length === 0) {
+      console.log(`[GRAPH] No entities extracted from ${toolName}`);
+      return;
+    }
+
+    console.log(`[GRAPH] Ingesting ${nodes.length} nodes, ${edges.length} edges from ${toolName}`);
+    await this.merge(nodes, edges);
   }
 
   private extract(toolName: string, result: any): { nodes: GraphNode[]; edges: GraphEdge[] } {
@@ -1387,7 +1552,16 @@ export class KnowledgeGraph {
     confidence?: number;
     source?: string;
   }>): Promise<{ added: number; merged: number }> {
-    if (!this.ready) return { added: 0, merged: 0 };
+    // Health check with reconnect attempt
+    if (!this.ready || !this.db.isConnectionReady()) {
+      console.error('[GRAPH] addEntities: Not ready, attempting reconnect...');
+      try {
+        await this.init();
+      } catch (err: any) {
+        console.error('[GRAPH] addEntities reconnect failed:', err.message);
+        throw new Error('Database not available');
+      }
+    }
 
     let added = 0, merged = 0;
     const now = new Date().toISOString();
@@ -1428,7 +1602,16 @@ export class KnowledgeGraph {
     confidence?: number;
     source?: string;
   }>): Promise<{ added: number; merged: number }> {
-    if (!this.ready) return { added: 0, merged: 0 };
+    // Health check with reconnect attempt
+    if (!this.ready || !this.db.isConnectionReady()) {
+      console.error('[GRAPH] addConnections: Not ready, attempting reconnect...');
+      try {
+        await this.init();
+      } catch (err: any) {
+        console.error('[GRAPH] addConnections reconnect failed:', err.message);
+        throw new Error('Database not available');
+      }
+    }
 
     let added = 0, merged = 0;
     const now = new Date().toISOString();

@@ -202,12 +202,12 @@ app.get('/metrics', async (_req: Request, res: Response) => {
 });
 
 // ─── INGEST ───────────────────────────────────────────────────────────────────
-// Called by Apify actor after every tool response — fire and forget on caller side.
-// Returns 202 immediately, processes async.
+// Called by Apify actor after every tool response.
+// Now waits for DB write to complete and reports actual status.
 //
 // Body: { tool_name: string, result: any }
 
-app.post('/ingest', (req: Request, res: Response) => {
+app.post('/ingest', async (req: Request, res: Response) => {
   const { tool_name, result } = req.body;
 
   if (!tool_name || result === undefined) {
@@ -215,11 +215,14 @@ app.post('/ingest', (req: Request, res: Response) => {
     return;
   }
 
-  // Respond immediately — never make the caller wait
-  res.status(202).json({ accepted: true });
-
-  // Process async, completely silent on errors
-  knowledgeGraph.ingest(tool_name, result).catch(() => {});
+  try {
+    // Wait for actual DB write to complete
+    await knowledgeGraph.ingest(tool_name, result);
+    res.status(202).json({ accepted: true, processed: true });
+  } catch (err: any) {
+    console.error('[INGEST ERROR]', err.message);
+    res.status(500).json({ accepted: false, error: err.message });
+  }
 });
 
 // ─── QUERY ────────────────────────────────────────────────────────────────────
@@ -515,6 +518,35 @@ app.post('/ingest/bulk', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DEBUG (temporary) ─────────────────────────────────────────────────────────
+// Returns raw FalkorDB response to debug parsing issues
+
+app.get('/debug/raw', async (_req: Request, res: Response) => {
+  try {
+    const db = (knowledgeGraph as any).db;
+    if (!db || !db.client) {
+      res.json({ error: 'No client' });
+      return;
+    }
+
+    // Get raw FalkorDB response for a simple query
+    const result = await (db.client as any).sendCommand([
+      'GRAPH.QUERY',
+      db.graphName || 'forage_v1',
+      'MATCH (n:Entity) RETURN n.type AS type, n.name AS name, n.id AS id LIMIT 5',
+    ]);
+
+    res.json({
+      raw: result,
+      headers: result?.[0],
+      data: result?.[1],
+      stats: result?.[2],
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 
