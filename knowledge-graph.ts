@@ -1148,8 +1148,14 @@ class KnowledgeStore {
     if (!raw) return null;
     const props = raw.properties || raw;
     try {
+      // FIX: Handle non-array sources from DB - sources could be string or missing
       const sourcesRaw = this.parseJsonField(props.sources);
-      const sources = Array.isArray(sourcesRaw) ? sourcesRaw : (sourcesRaw ? [sourcesRaw] : []);
+      let sources: string[] = [];
+      if (Array.isArray(sourcesRaw)) {
+        sources = sourcesRaw;
+      } else if (sourcesRaw) {
+        sources = [sourcesRaw]; // Single string, wrap in array
+      }
       
       return {
         id: props.id,
