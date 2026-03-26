@@ -1148,12 +1148,15 @@ class KnowledgeStore {
     if (!raw) return null;
     const props = raw.properties || raw;
     try {
+      const sourcesRaw = this.parseJsonField(props.sources);
+      const sources = Array.isArray(sourcesRaw) ? sourcesRaw : (sourcesRaw ? [sourcesRaw] : []);
+      
       return {
         id: props.id,
         type: props.type,
         name: props.name,
         properties: this.parseJsonField(props.properties),
-        sources: this.parseJsonField(props.sources) || [],
+        sources: sources,
         confidence: parseFloat(props.confidence) || 0.75,
         call_count: parseInt(props.call_count) || 1,
         first_seen: props.first_seen || new Date().toISOString(),
