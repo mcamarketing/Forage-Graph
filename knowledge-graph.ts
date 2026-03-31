@@ -1317,8 +1317,8 @@ class KnowledgeStore {
     source: string,
     confidence: number = 0.5
   ): Promise<void> {
-    const fromId = generateULEMIdentity(fromName, fromType).ulem_id;
-    const toId = generateULEMIdentity(toName, toType).ulem_id;
+    const fromId = generateCompositeId(generateULEMIdentity(fromType, fromName));
+    const toId = generateCompositeId(generateULEMIdentity(toType, toName));
     const edgeId = `${fromId}:${relation}:${toId}`;
     const now = new Date().toISOString();
 
@@ -1441,7 +1441,7 @@ class KnowledgeStore {
     await this.graphQuery(
       `MERGE (s:Entity {id: $sim_id})
        SET s.type = 'Simulation',
-           s.name = 'Simulation ${$sim_id}',
+            s.name = 'Simulation ' + $sim_id,
            s.properties = $properties,
            s.first_seen = $now,
            s.last_seen = $now`,
@@ -1459,7 +1459,7 @@ class KnowledgeStore {
     // Write prediction edges if present
     if (report.predictions) {
       for (const pred of report.predictions) {
-        const entityId = generateULEMIdentity(pred.entity, 'Entity').ulem_id;
+        const entityId = generateCompositeId(generateULEMIdentity('Entity', pred.entity));
         await this.graphQuery(
           `MERGE (e:Entity {id: $entity_id})
            MERGE (s:Entity {id: $sim_id})
@@ -1483,7 +1483,7 @@ class KnowledgeStore {
     // Write narrative edges if present
     if (report.narratives) {
       for (const narr of report.narratives) {
-        const topicId = generateULEMIdentity(narr.topic, 'Narrative').ulem_id;
+        const topicId = generateCompositeId(generateULEMIdentity('Narrative', narr.topic));
         await this.graphQuery(
           `MERGE (n:Entity {id: $topic_id})
            SET n.type = 'Narrative', n.name = $topic, n.name_lower = toLower($topic)
