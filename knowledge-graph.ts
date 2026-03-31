@@ -1200,10 +1200,32 @@ class KnowledgeStore {
     if (!raw) return null;
     
     // Handle both FalkorDB node format and simple map format
-    let props: any;
+    let props: any = {};
+    
     if (raw._internal_id !== undefined) {
-      // FalkorDB node: [internalId, [labels], [[key, type, value], ...]]
-      props = raw;
+      // FalkorDB format: properties stored as "id:value": ["prop_name", "prop_value"]
+      // Extract all property pairs from the raw object
+      for (const [key, value] of Object.entries(raw)) {
+        if (key.startsWith('id,')) {
+          // This is a property entry: [prop_name, prop_value]
+          const propEntry = value as any[];
+          if (Array.isArray(propEntry) && propEntry.length >= 2) {
+            const propName = propEntry[0];
+            const propValue = propEntry[1];
+            props[propName] = propValue;
+          }
+        } else if (!key.startsWith('_')) {
+          // Direct property (like id, type stored directly)
+          props[key] = value;
+        }
+      }
+      // Also extract from _labels if present
+      if (raw._labels && Array.isArray(raw._labels) && raw._labels.length >= 2) {
+        const labels = raw._labels[1];
+        if (Array.isArray(labels) && labels.length > 0) {
+          props.type = labels[0]; // First label as type
+        }
+      }
     } else if (raw.properties) {
       props = raw.properties;
     } else {
@@ -1212,7 +1234,7 @@ class KnowledgeStore {
     
     // If no valid name, skip this node
     if (!props || !props.name) {
-      console.log('[GRAPH] Skipping node with no name, raw:', JSON.stringify(raw).substring(0, 200));
+      console.log('[GRAPH] Skipping node with no name, props:', JSON.stringify(props).substring(0, 200), 'raw:', JSON.stringify(raw).substring(0, 200));
       return null;
     }
     try {
