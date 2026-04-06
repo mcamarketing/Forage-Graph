@@ -5,11 +5,12 @@ Policy-Driven Connection Loader
 Systematically adds connections based on graph_policy.py requirements.
 Uses very slow rate limiting (5s between requests) to avoid 503s.
 """
+import os
 import requests
 import time
 
-API = 'https://forage-graph-production.up.railway.app'
-SECRET = '6da69224eb14e6bdb0fb63514b772480d23a4467f8ac8a4b15266a8262d7f959'
+API = os.environ.get('GRAPH_API_URL', 'https://forage-graph-production.up.railway.app')
+SECRET = os.environ['GRAPH_API_SECRET']
 headers = {'Authorization': f'Bearer {SECRET}', 'Content-Type': 'application/json'}
 
 # Corporation -> Industry mappings (operates_in)

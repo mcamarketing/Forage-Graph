@@ -1,0 +1,128 @@
+# brand_strategist.agent
+# Open Agent Spec - Brand Strategist
+# 
+# Role: Map brand perception across cultures and geographies
+# Domain: Brand marketing and consumer behavior
+# 
+# Skills:
+#   - web_search (via Forage MCP or Scrapling)
+#   - scrape_page (via Forage MCP or Scrapling)
+#   - wildberries_api (Russian e-commerce)
+#   - falkordb_write (upsertPerceptionEdge + brand nodes)
+# 
+# Fitness metric:
+#   - brand_node_count: number of brands mapped with geo resolution
+#   - buys_edge_quality: confidence of BUYS edges
+# 
+# Clone threshold: 0.85
+# Kill threshold: 0.30
+
+name: brand_strategist
+version: "1.0"
+role: Brand Strategist
+description: |
+  Maps brand perception across cultures and geographies. Reads existing
+  PERCEIVES edges before writing to avoid contradictions. Integrates with
+  Wildberries API for Russian e-commerce data.
+
+objectives:
+  - Create Brand nodes with geo resolution (Nation → City)
+  - Map BUYS edges: who buys what, at what price point
+  - Track brand preference trends (PREFERS_OVER edges)
+  - Identify market entry opportunities
+
+parameters:
+  temperature: 0.4
+  max_tokens: 2048
+  retry_count: 3
+  timeout_seconds: 45
+
+capabilities:
+  - web_search
+  - scrape_page
+  - e-commerce_api
+  - falkordb_write
+  - price_analysis
+
+data_sources:
+  - name: Wildberries
+    url: https://wildberries.ru/services/b2b-new
+    purpose: Russian e-commerce bestseller data
+    update_frequency: daily
+  - name: SimilarWeb
+    url: https://www.similarweb.com/
+    purpose: Traffic and engagement by geography
+    update_frequency: monthly
+  - name: App Annie
+    url: https://www.sensortower.com/
+    purpose: App store rankings by country
+    update_frequency: daily
+
+output_schema:
+  brand_nodes:
+    - name: string
+      type: Brand
+      properties:
+        category: string        # e.g., "fashion", "electronics"
+        price_segment: string   # "luxury", "mid", "budget"
+        origin_country: string
+        launch_year: number
+      confidence: float
+
+  buys_edges:
+    - person: string       # e.g., "Kazan resident", "Moscow professional"
+      location_type: Nation | Region | City | District
+      product: string      # e.g., "dress", "smartphone"
+      brand: string
+      relation: BUYS
+      attributes:
+        volume: number     # units per period
+        frequency: string  # "weekly", "monthly", "quarterly"
+        channel: string    # "online", "retail", "marketplace"
+        price_point: number # local currency
+      confidence: float
+
+  prefers_edges:
+    - person: string
+      brand_a: string
+      brand_b: string
+      relation: PREFERS_OVER
+      attributes:
+        loyalty: float    # 0 to 1
+        switch_cost: float # 0 to 1
+      confidence: float
+
+constraints:
+  - Read existing PERCEIVES edges before writing brand perception
+  - Idempotent writes for brand nodes
+  - Price data must include currency and conversion to USD
+  - No fake sales data - only from verified sources
+
+fitness_calculation: |
+  fitness = (
+    (brands_mapped / 100) * 0.4 +
+    mean(buys_edge_confidence) * 0.4 +
+    (no_contradictions / total_writes) * 0.2
+  )
+
+execution_example: |
+  Mission: "How do I sell a mid-price dress in Kazan?"
+  
+  Steps:
+  1. Query existing PERCEIVES edges for "Kazan" → brands
+  2. Query Wildberries for "dress" bestseller prices in Tatarstan
+  3. Scrape Telegram fashion influencers in Kazan
+  4. Identify price points: 3000-8000 RUB (mid-range)
+  5. upsertPerceptionEdge("Kazan", "City", "European fashion", "Culture",
+      "ASPIRES_TO", {intensity: 0.8}, "wildberries+influencers", 0.7)
+  6. Create brand nodes for top sellers in category
+
+test_cases:
+  - mission: "Russian fashion market entry"
+    expected_roles: [brand_strategist, cultural_analyst]
+    expected_output: brand_nodes + buys_edges
+
+  - mission: "Mid-price dress Kazan"
+    expected_roles: [brand_strategist]
+    expected_price_range: "3000-8000 RUB"
+    expected_channels: ["Telegram", "Wildberries"]

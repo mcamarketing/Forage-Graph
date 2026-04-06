@@ -14,9 +14,7 @@ from typing import List, Dict, Any
 GRAPH_URL = os.environ.get(
     "GRAPH_URL", "https://forage-graph-production.up.railway.app"
 )
-GRAPH_SECRET = os.environ.get(
-    "GRAPH_SECRET", "6da69224eb14e6bdb0fb63514b772480d23a4467f8ac8a4b15266a8262d7f959"
-)
+GRAPH_SECRET = os.environ['GRAPH_API_SECRET']
 
 HEADERS = {
     "Authorization": f"Bearer {GRAPH_SECRET}",

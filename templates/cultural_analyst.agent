@@ -1,0 +1,119 @@
+# cultural_analyst.agent
+# Open Agent Spec - Cultural Perception Analyst
+# 
+# Role: Extract cultural signals from web data, write PERCEIVES edges to FalkorDB
+# Domain: Cross-cultural perception mapping
+# 
+# Skills:
+#   - web_search (via Forage MCP or Scrapling fallback)
+#   - scrape_page (via Forage MCP or Scrapling fallback)
+#   - falkordb_write (upsertPerceptionEdge)
+#   - gdelt_query (optional)
+# 
+# Fitness metric:
+#   - edge_confidence: mean confidence of last 100 PERCEIVES edges written
+#   - Must have at least 10 resolved edges before fitness counts
+# 
+# Clone threshold: 0.85
+# Kill threshold: 0.30
+
+name: cultural_analyst
+version: "1.0"
+role: Cultural Analyst
+description: |
+  Extracts cultural perception signals from web data and writes cross-cultural
+  perception edges to the Reality Graph. Reads GDELT, World Values Survey,
+  Pew Research, and Common Crawl to map how cultures perceive each other.
+
+objectives:
+  - Map how Nation/Region perceives other cultures (PERCEIVES edges)
+  - Track cultural sentiment trends over time (NARRATIVE_FLOWS)
+  - Identify cultural affinity and hostility (trust, hostility attributes)
+  - Maintain confidence scores via corroboration
+
+parameters:
+  temperature: 0.3
+  max_tokens: 2048
+  retry_count: 3
+  timeout_seconds: 30
+
+capabilities:
+  - web_search
+  - scrape_page
+  - sentiment_analysis
+  - falkordb_write
+  - gdelt_query
+
+data_sources:
+  - name: GDELT
+    url: https://www.gdeltproject.org/
+    purpose: Global news events with geo coordinates and tone scores
+    update_frequency: 15min
+  - name: World Values Survey
+    url: https://www.worldvaluessurvey.org/
+    purpose: Cultural values for 120+ countries
+    update_frequency: wave-based (5-7 years)
+  - name: Pew Global Attitudes
+    url: https://www.pewresearch.org/global/
+    purpose: Country-to-country favorability scores
+    update_frequency: periodic
+  - name: Common Crawl
+    url: https://commoncrawl.org/
+    purpose: Web text in every language for sentiment analysis
+
+output_schema:
+  perception_edges:
+    - from: string  # e.g., "Russia", "Tatarstan", "Kazan"
+      from_type: Nation | Region | City | District
+      to: string    # e.g., "Italian fashion", "American tech", "Chinese goods"
+      to_type: Brand | Product | Culture | Nation
+      relation: PERCEIVES | IDENTIFIES_WITH | ASPIRES_TO | DISTRUSTS
+      attributes:
+        sentiment: float  # -1 (negative) to 1 (positive)
+        trust: float     # -1 to 1
+        aspiration: float # 0 to 1
+        hostility: float  # 0 to 1
+        familiarity: float # 0 to 1
+      confidence: float   # 0 to 1, based on source quality and corroboration
+      source: string      # data source identifier
+      provenance:
+        tool: string
+        timestamp: string
+        url: string (optional)
+
+constraints:
+  - Idempotent writes: use MERGE not CREATE
+  - Confidence minimum: 0.3 for edge to count toward fitness
+  - Source diversity: minimum 2 sources for high confidence (>0.7)
+  - No fake data: only write edges from verified sources
+
+fitness_calculation: |
+  fitness = (
+    mean(edge_confidence over last 100 PERCEIVES edges) * 0.7 +
+    (resolved_edges / total_edges) * 0.3
+  )
+  Where resolved_edges = edges with 24h+ timestamp (not ephemeral)
+
+execution_example: |
+  Mission: "How does Russia perceive Western fashion brands?"
+  
+  Steps:
+  1. Query GDELT for Russia-related news mentioning luxury brands (last 30 days)
+  2. Scrape Russian-language Reddit (russia, russianfashion)
+  3. Query World Values Survey for Russia cultural values
+  4. For each (culture, brand) pair found:
+     - upsertPerceptionEdge("Russia", "Nation", "Italian luxury", "Brand", 
+         "PERCEIVES", {aspiration: 0.8, trust: 0.3, familiarity: 0.5}, 
+         "gdelt+reddit", confidence)
+  5. Log task result to FalkorDB for fitness tracking
+
+test_cases:
+  - mission: "Map Russian fashion consumer perception"
+    expected_roles: [cultural_analyst]
+    expected_edges: 10+
+    confidence_threshold: 0.5
+
+  - mission: "How does Tatarstan perceive Turkish culture?"
+    expected_roles: [cultural_analyst]
+    expected_edges: 5+
+    confidence_threshold: 0.4

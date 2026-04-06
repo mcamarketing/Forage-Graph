@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Bulk entity loader - adds thousands of entities to the graph"""
 
+import os
 import requests
 import time
 
 API = "https://forage-graph-production.up.railway.app"
-TOKEN = "6da69224eb14e6bdb0fb63514b772480d23a4467f8ac8a4b15266a8262d7f959"
+TOKEN = os.environ['GRAPH_API_SECRET']
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
 

@@ -38,6 +38,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { knowledgeGraph } from './knowledge-graph.js';
 import { createCausalEngine, CrashEvent, CausalFactor } from './causal-inference.js';
+import { getMiroFishBridge } from './mirofish-realtime-bridge.js';
+import { getConnectionEnricher } from './connection-enricher.js';
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -520,6 +522,19 @@ app.post('/ingest/bulk', async (req: Request, res: Response) => {
 
     const entityResult = await knowledgeGraph.addEntities(entities);
     const connResult = await knowledgeGraph.addConnections(connections);
+
+    // Trigger MiroFish sync for simulation-worthy entities
+    if (process.env.ENABLE_MIROFISH_SYNC === 'true') {
+      try {
+        const miroFishBridge = getMiroFishBridge(knowledgeGraph);
+        for (const entity of entities) {
+          await miroFishBridge.onEntityCreated(entity as any);
+        }
+      } catch (err) {
+        // Non-blocking: don't fail ingest if MiroFish sync fails
+        console.error('[INGEST] MiroFish sync error:', err);
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -1802,12 +1817,35 @@ app.post('/plan/scenarios', async (req: Request, res: Response) => {
 async function start() {
   await knowledgeGraph.init();
 
+  // Initialize real-time MiroFish bridge
+  if (process.env.ENABLE_MIROFISH_SYNC === 'true') {
+    try {
+      const miroFishBridge = getMiroFishBridge(knowledgeGraph);
+      await miroFishBridge.initialize();
+      console.log('[START] MiroFish real-time sync enabled');
+    } catch (err) {
+      console.error('[START] Failed to initialize MiroFish bridge:', err);
+    }
+  }
+
+  // Initialize connection enricher
+  if (process.env.ENABLE_ENRICHMENT !== 'false') {
+    try {
+      const enricher = getConnectionEnricher(knowledgeGraph);
+      enricher.start();
+      console.log('[START] Connection enrichment engine started');
+    } catch (err) {
+      console.error('[START] Failed to start enrichment:', err);
+    }
+  }
+
   app.listen(PORT, () => {
     console.log(`Forage Reality Graph API running on port ${PORT}`);
     console.log(`Health: http://localhost:${PORT}/health`);
     console.log(`Features: FIBO schema, ULEM dual-hash, Hawkes contagion, Adamic-Adar prediction`);
     console.log(`Crash Intelligence: /crash/explain, /crash/counterfactual, /regime/now, /portfolio/risk_map`);
     console.log(`Regime-Aware: /event/explain, /plan/scenarios, /narrative/brief`);
+    console.log(`Real-time Sync: MiroFish bridge, Connection enrichment`);
   });
 }
 

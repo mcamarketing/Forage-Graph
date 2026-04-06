@@ -6,6 +6,7 @@ Enforces minimum edge counts per entity type to achieve 5-10 edges/node ratio.
 
 Target: 5-10 edges per node (currently at 0.28)
 """
+import os
 
 # Minimum outgoing edges required per entity type
 CONNECTION_BUDGET = {
@@ -279,8 +280,8 @@ if __name__ == '__main__':
     import requests
     import time
 
-    API = 'https://forage-graph-production.up.railway.app'
-    SECRET = '6da69224eb14e6bdb0fb63514b772480d23a4467f8ac8a4b15266a8262d7f959'
+    API = os.environ.get('GRAPH_API_URL', 'https://forage-graph-production.up.railway.app')
+    SECRET = os.environ['GRAPH_API_SECRET']
     headers = {'Authorization': f'Bearer {SECRET}', 'Content-Type': 'application/json'}
 
     print("Connection Budget Policy Loader")

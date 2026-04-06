@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Expand relationships to increase edge density."""
+import os
 import requests
 import time
 
-API = 'https://forage-graph-production.up.railway.app'
-SECRET = '6da69224eb14e6bdb0fb63514b772480d23a4467f8ac8a4b15266a8262d7f959'
+API = os.environ.get('GRAPH_API_URL', 'https://forage-graph-production.up.railway.app')
+SECRET = os.environ['GRAPH_API_SECRET']
 headers = {'Authorization': f'Bearer {SECRET}', 'Content-Type': 'application/json'}
 
 # More comprehensive competitor relationships

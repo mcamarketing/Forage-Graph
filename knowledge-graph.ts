@@ -922,7 +922,7 @@ class KnowledgeStore {
 
     console.log('[GRAPH] findNodesByName query:', query, 'params:', JSON.stringify(params));
     const rows = await this.graphQuery(query, params);
-    console.log('[GRAPH] findNodesByName raw rows count:', rows.length, 'first:', JSON.stringify(rows[0]).substring(0, 300));
+    console.log('[GRAPH] findNodesByName raw rows count:', rows.length, 'first:', rows.length > 0 ? JSON.stringify(rows[0]).substring(0, 300) : 'none');
     
     const result = rows.map(r => this.rowToNode(r[0])).filter(Boolean) as GraphNode[];
     console.log('[GRAPH] findNodesByName result count:', result.length);
