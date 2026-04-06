@@ -26,8 +26,6 @@ interface EnrichmentRule {
 interface LinkPrediction {
   from_id: string;
   to_id: string;
-
-
   relation: RelationType;
   confidence: number;
   source: string;
