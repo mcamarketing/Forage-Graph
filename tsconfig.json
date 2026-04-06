@@ -9,5 +9,5 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["server.ts", "knowledge-graph.ts", "forage-graph-client.ts", "causal-inference.ts", "hawkes-contagion.ts", "link-prediction.ts", "ulem-identity.ts"]
+  "include": ["server.ts", "knowledge-graph.ts", "forage-graph-client.ts", "causal-inference.ts", "hawkes-contagion.ts", "link-prediction.ts", "ulem-identity.ts", "connection-enricher.ts", "mirofish-realtime-bridge.ts"]
 }
