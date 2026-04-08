@@ -22,204 +22,390 @@ import { HawkesProcessEngine, HawkesEvent, ContagionResult, ShockSimulation, est
 // [fibo-001] https://spec.edmcouncil.org/fibo/ontology
 
 export type EntityType =
-  // FIBO Legal Entities
-  | 'LegalEntity'          // FIBO: LegalEntity (base type for all organizations)
-  | 'AutonomousAgent'      // FIBO: AutonomousAgent (AI agents, bots, autonomous orgs)
-  | 'FinancialInstitution' // FIBO: FinancialInstitution (banks, credit unions)
-  | 'Corporation'          // FIBO: Corporation (incorporated entities)
-  | 'SoleProprietor'       // FIBO: SoleProprietor (unincorporated businesses)
-  
-  // Legacy compatibility (deprecated, use FIBO types)
-  | 'Company'              // Maps to Corporation/FinancialInstitution
-  | 'Person'               // FIBO: Person (natural person)
-  
-  // FIBO Financial Instruments
-  | 'FinancialInstrument'  // FIBO: FinancialInstrument (base)
-  | 'DebtInstrument'       // FIBO: DebtInstrument (bonds, loans)
-  | 'EquityInstrument'     // FIBO: EquityInstrument (stocks, shares)
-  | 'DerivativeInstrument' // FIBO: DerivativeInstrument (options, futures)
-  | 'Asset'                // FIBO: Asset (any asset class)
-  
-  // Geographic/Spatial
-  | 'Location'             // FIBO: GeographicLocation
-  | 'Jurisdiction'         // FIBO: Jurisdiction (legal jurisdiction)
-  | 'City'                 // City / municipality
-  | 'Region'               // Sub-national region / state / county
-  | 'Nation'               // Sovereign nation / country
-  
-  // Industry/Market
-  | 'Industry'             // FIBO: IndustrySector
-  | 'Market'               // FIBO: Market
-  | 'EconomicSector'       // FIBO: EconomicSector
-  | 'Product'              // Product or service offering
-  
-  // Information/Knowledge
-  | 'Technology'
-  | 'Domain'
-  | 'JobTitle'
-  | 'EmailPattern'
-  | 'InformationSource'    // FIBO: InformationSource
-  
-  // Causal Intelligence Types
-  | 'Event'                // Temporal events (macro, geopolitical)
-  | 'Trend'
-  | 'Indicator'            // Economic indicators (GDP, CPI, etc.)
-  | 'Forecast'
-  | 'Risk'
-  | 'Opportunity'
-  | 'Policy'               // Government policy changes
-  | 'Regulation'           // Regulatory changes
-  | 'Sentiment'
-  | 'Topic'
-  | 'Narrative'
-  | 'Actor'                // Political/financial actors
-  | 'Network'              // Organizational networks
 
-  // Regime-Aware Layer [regime-001]
-  | 'Channel'              // Risk transmission channel (credit, liquidity, sentiment, etc.)
-  | 'CausalChain'          // Materialized causal path between root cause and crash
-  | 'Portfolio'            // Portfolio exposure tracking
-  | 'Scenario'             // MiroFish scenario container
-  | 'SimulatedOutcome'     // Serialized MiroFish simulation result
-  | 'SimulatedCrash'       // Simulated crash based on real pattern
-  | 'SimulatedNarrative'   // Simulated narrative based on real pattern
-  | 'DataSource'           // Data provenance: source system
-  | 'RawData'              // Data provenance: raw ingested content
-  | 'TimeSeriesPoint'      // Time-series data point (FRED, prices, etc.)
-  | 'SentimentPoint'       // Sentiment measurement point
+  // ══════════════════════════════════════════════════════════════════════════
+  // ACTORS — things that exist and can act
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // Simulation Layer [sim-001]
-  // SimAgents can READS_FROM Reality but cannot modify it
-  | 'SimAgent'             // Simulation agent (AI personas, what-if actors)
-  | 'SimEpisode'           // Simulation episode (counterfactual scenarios)
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CRASH CAUSAL INTELLIGENCE [crash-001]
-  // Higher-level constructs for answering "what caused the crash and why"
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Market Event Types
-  | 'MarketCrash'          // Major market drawdown event (>10% drop)
-  | 'SectorCrash'          // Sector-specific collapse
-  | 'FlashCrash'           // Rapid intraday crash (<1 hour)
-  | 'CurrencyCrisis'       // Currency collapse event
-  | 'SovereignDefault'     // Government debt default
-  | 'BankRun'              // Financial institution run
-  | 'LiquidityCrisis'      // Market-wide liquidity freeze
-
-  // Transmission Mechanisms [crash-mechanism-001]
-  | 'CrashMechanism'       // HOW the crash propagated
-  | 'MarginCall'           // Forced liquidation cascade
-  | 'DebtContagion'        // Credit default cascade
-  | 'PanicSelling'         // Behavioral contagion
-  | 'HerdBehavior'         // Momentum-driven cascade
-  | 'AlgorithmicCascade'   // HFT/algo-driven waterfall
-
-  // Risk Channels [crash-channel-001]
-  | 'RiskChannel'          // WHERE risk flows through
-  | 'LeverageExposure'     // Leveraged position risk
-  | 'DerivativeExposure'   // Options/futures/swaps exposure
-  | 'CreditLine'           // Counterparty credit risk
-  | 'CollateralChain'      // Rehypothecation/collateral risk
-  | 'FundingChannel'       // Short-term funding dependency
-
-  // Structural Vulnerabilities [crash-vuln-001]
-  | 'SystemicVulnerability'  // Structural weakness in system
-  | 'ConcentrationRisk'      // Over-concentration in positions
-  | 'MaturityMismatch'       // Asset/liability duration gap
-  | 'HiddenLeverage'         // Off-balance-sheet leverage
-  | 'RegulatoryCap'          // Regulatory intervention threshold
-
-  // Causal Factors [crash-factor-001]
-  | 'CrashFactor'          // Root cause category
-  | 'MonetaryShock'        // Central bank action
-  | 'GeopoliticalShock'    // War, sanctions, political crisis
-  | 'PandemicShock'        // Health crisis impact
-  | 'TechFailure'          // Infrastructure/system failure
-  | 'FraudRevelation'      // Major fraud uncovered (e.g., Madoff)
-
-  // ─── Trading / Prediction Markets [trading-001] ─────────────────────────────
-  | 'PredictionMarket'     // Binary prediction market (Polymarket, Kalshi)
-  | 'OddsSnapshot'         // Point-in-time price snapshot on a prediction market
-  | 'Trade'                // Executed trade record (on-chain or off-chain)
-  | 'Source'               // Intelligence source (wallet, fund, analyst)
-  | 'Signal'               // Actionable trading signal (cross-venue, model output)
-  | 'Revelation'           // Oracle revelation: synthesised insight from graph
-  | 'Regime'               // Market regime state (risk-on/off, vol regime)
-  | 'PriceSnapshot'        // Point-in-time asset price (equities, FX, crypto)
-  | 'Order'                // Limit/market order on an exchange
-  | 'Position'             // Open position (long/short) held by an actor
-  | 'Portfolio'            // Portfolio exposure tracking
-  | 'Execution'            // Trade execution record with fill details
-  | 'Venue'                // Trading venue / exchange (IG, Polymarket, Binance)
-  | 'Instrument'           // Tradeable instrument (epic, ticker, contract)
-  | 'SpreadBet'            // IG spread bet position
-  | 'CFD'                  // Contract for difference position
-  | 'PredictionOutcome'    // Resolved outcome of a prediction market
-  | 'Arbitrage'            // Detected arbitrage opportunity
-
-  // ─── Intelligence / News / Media [intel-001] ─────────────────────────────────
-  | 'Article'              // News article or blog post
-  | 'NewsSource'           // Publication / media outlet
-  | 'SocialPost'           // Social media post (Twitter/X, Reddit, LinkedIn)
-  | 'Rumour'               // Unverified market rumour
-  | 'EarningsReport'       // Corporate earnings announcement
-  | 'Transcript'           // Earnings call / conference transcript
-  | 'PressRelease'         // Official press release
-  | 'Lawsuit'              // Legal proceedings / litigation
-  | 'Patent'               // Intellectual property filing
-  | 'MacroEvent'           // Macro-level event (FOMC, election, GDP release)
-  | 'EconomicRelease'      // Official economic data release (CPI, NFP, etc.)
-  | 'CentralBankAction'    // Central bank rate decision / QE / QT
-  | 'SanctionEvent'        // Sanctions imposed or lifted
-  | 'ElectionEvent'        // Election or referendum
-  | 'ConflictEvent'        // Armed conflict, war, ceasefire
-  | 'NaturalDisaster'      // Natural disaster event
-  | 'ClimateEvent'         // Climate / ESG event
-  | 'IPO'                  // Initial public offering
-  | 'Merger'               // M&A: merger or acquisition
-  | 'Spinoff'              // Corporate spinoff / demerger
-  | 'Bankruptcy'           // Bankruptcy or insolvency filing
-
-  // ─── People & Organisations [org-001] ──────────────────────────────────────
-  | 'Executive'            // C-suite executive
+  // People
+  | 'Person'               // Any human individual
   | 'Politician'           // Elected or appointed official
-  | 'CentralBanker'        // Central bank official (Fed chair, ECB, etc.)
-  | 'Analyst'              // Sell-side / buy-side analyst
-  | 'Journalist'           // Financial journalist / reporter
-  | 'Regulator'            // Regulatory body or individual regulator
-  | 'Fund'                 // Investment fund (hedge fund, mutual fund, ETF)
-  | 'HedgeFund'            // Hedge fund entity
-  | 'PensionFund'          // Pension fund entity
-  | 'SovereignWealthFund'  // Sovereign wealth fund
-  | 'VentureCapital'       // VC firm
-  | 'PrivateEquity'        // PE firm
-  | 'IndexProvider'        // S&P, MSCI, FTSE Russell etc.
-  | 'Exchange'             // Stock / derivatives exchange
-  | 'ClearingHouse'        // Central counterparty clearing house
-  | 'Custodian'            // Asset custodian
-  | 'PrimeBroker'          // Prime brokerage entity
-  | 'CryptoWallet'         // Blockchain wallet address
-  | 'CryptoProtocol'       // DeFi protocol / smart contract system
+  | 'HeadOfState'          // President, Prime Minister, Monarch
+  | 'Diplomat'             // Ambassador, envoy
+  | 'Military'             // Military officer or force commander
+  | 'Activist'             // Social or political activist
+  | 'Journalist'           // Reporter, editor, broadcaster
+  | 'Scientist'            // Researcher, academic
+  | 'Engineer'             // Technical professional
+  | 'Doctor'               // Medical professional
+  | 'Lawyer'               // Legal professional
+  | 'Executive'            // Corporate executive (CEO, CFO, etc.)
+  | 'Entrepreneur'         // Founder, business creator
+  | 'Investor'             // Individual investor / trader
+  | 'Analyst'              // Financial or market analyst
+  | 'CentralBanker'        // Central bank official
+  | 'Regulator'            // Individual regulatory official
+  | 'Judge'                // Judicial officer
+  | 'Celebrity'            // Cultural figure with public influence
+  | 'Author'               // Writer / intellectual
+  | 'Artist'               // Visual artist, musician, filmmaker
+  | 'Athlete'              // Professional sportsperson
+  | 'Religious'            // Religious leader
+
+  // Organisations — public
+  | 'Government'           // National government or administration
+  | 'Ministry'             // Government ministry or department
+  | 'RegulatoryBody'       // Independent regulator (SEC, FCA, FDA, etc.)
+  | 'CentralBank'          // Central banking authority
+  | 'Court'                // Judicial court or tribunal
+  | 'Legislature'          // Parliament, congress, senate
+  | 'PoliticalParty'       // Political party
+  | 'MilitaryForce'        // Armed forces, military branch
+  | 'IntelligenceAgency'   // Intelligence / spy agency
+  | 'PublicAgency'         // Government agency (NASA, EPA, etc.)
+  | 'InternationalOrg'     // UN, NATO, WTO, IMF, World Bank, etc.
+  | 'IntergovernmentalBody' // EU, ASEAN, G20 secretariat
+
+  // Organisations — private
+  | 'Company'              // Generic commercial entity
+  | 'Corporation'          // Publicly listed or incorporated company
+  | 'Startup'              // Early-stage company
+  | 'SME'                  // Small & medium enterprise
+  | 'Cooperative'          // Worker or consumer cooperative
+  | 'Partnership'          // Legal partnership
+  | 'SoleTrader'           // Sole proprietor / freelancer
+  | 'Conglomerate'         // Multi-sector holding group
+  | 'HoldingCompany'       // Holding / parent entity
+  | 'JointVenture'         // Temporary joint venture
+
+  // Finance
+  | 'Bank'                 // Commercial or investment bank
+  | 'InvestmentBank'       // Investment banking entity
+  | 'Fund'                 // Generic investment fund
+  | 'HedgeFund'            // Hedge fund
+  | 'MutualFund'           // Retail mutual fund / UCITS
+  | 'ETF'                  // Exchange-traded fund
+  | 'PensionFund'          // Pension / retirement fund
+  | 'SovereignWealthFund'  // State-owned investment fund
+  | 'VentureCapital'       // Venture capital firm
+  | 'PrivateEquity'        // Private equity firm
+  | 'FamilyOffice'         // Ultra-HNW private office
+  | 'InsuranceCompany'     // Insurance underwriter
+  | 'RatingAgency'         // Credit rating agency (Moody's, S&P, Fitch)
+  | 'Exchange'             // Stock, futures, or crypto exchange
+  | 'ClearingHouse'        // CCP / clearing entity
+  | 'Custodian'            // Asset custodian / depository
+  | 'PrimeBroker'          // Prime brokerage
+  | 'PaymentNetwork'       // Visa, Mastercard, SWIFT, etc.
+  | 'FinTech'              // Financial technology firm
+
+  // Civil society
+  | 'NGO'                  // Non-governmental organisation
+  | 'Charity'              // Charitable foundation or trust
+  | 'ThinkTank'            // Policy research institute
+  | 'TradeAssociation'     // Industry body / lobby group
+  | 'Union'                // Labour union / trade union
+  | 'PressureGroup'        // Advocacy or campaigning group
+  | 'SocialMovement'       // Grassroots social movement
+  | 'Community'            // Local or online community
+  | 'ReligiousOrg'         // Church, mosque, synagogue, etc.
+
+  // Academia & science
+  | 'University'           // Higher education institution
+  | 'ResearchInstitute'    // Dedicated research body
+  | 'Laboratory'           // Scientific laboratory
+  | 'StandardsBody'        // ISO, IEEE, IETF, W3C, etc.
+
+  // Media
+  | 'MediaOutlet'          // News organisation / publisher
+  | 'SocialPlatform'       // Social media platform (X, Reddit, etc.)
+  | 'StreamingPlatform'    // Netflix, Spotify, YouTube, etc.
+  | 'PublishingHouse'      // Book or academic publisher
+
+  // Technology
+  | 'TechCompany'          // Technology firm (hardware or software)
+  | 'AILab'                // AI research lab (OpenAI, DeepMind, etc.)
+  | 'AIAgent'              // Autonomous AI agent
+  | 'SoftwarePlatform'     // SaaS / software platform
+  | 'OpenSourceProject'    // Open-source software project
+  | 'CryptoProtocol'       // DeFi / blockchain protocol
   | 'DAO'                  // Decentralised autonomous organisation
+  | 'CryptoExchange'       // Cryptocurrency exchange
 
-  // ─── Science / Research [research-001] ─────────────────────────────────────
-  | 'ResearchPaper'        // Academic or industry research paper
-  | 'Dataset'              // Named dataset or data product
-  | 'Model'                // Quantitative model / ML model
-  | 'Concept'              // Abstract concept (inflation, liquidity, contagion)
-  | 'Metric'               // Quantitative metric (P/E ratio, Sharpe, VaR)
+  // ══════════════════════════════════════════════════════════════════════════
+  // PLACES — physical and administrative geography
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ─── Infrastructure / Tech [infra-001] ──────────────────────────────────────
-  | 'API'                  // External API or data feed
-  | 'Database'             // Database or data warehouse
-  | 'Blockchain'           // Layer-1 or Layer-2 blockchain network
-  | 'SmartContract'        // Deployed smart contract
-  | 'Infrastructure'       // Cloud / physical infrastructure
-  | 'AIAgent'              // AI agent in the Forage org or external agent
+  | 'Planet'               // Planetary body
+  | 'Continent'            // Continental region
+  | 'Nation'               // Sovereign nation / country
+  | 'Territory'            // Non-sovereign territory / dependency
+  | 'Region'               // Sub-national administrative region (state, province)
+  | 'City'                 // City or metropolitan area
+  | 'Town'                 // Town or village
+  | 'District'             // Urban district or borough
+  | 'Location'             // Generic named place
+  | 'Jurisdiction'         // Legal jurisdiction (can overlap geography)
+  | 'Border'               // International border or boundary
+  | 'SeaLane'              // Maritime shipping route
+  | 'AirCorridor'          // Aviation corridor
+  | 'EconomicZone'         // Exclusive economic zone, free trade zone
+  | 'Building'             // Physical building or facility
+  | 'Port'                 // Sea or air port
+  | 'MilitaryBase'         // Military installation
+  | 'NaturalFeature'       // River, mountain, ocean, etc.
+  | 'Ecosystem'            // Ecological region or biome
 
-  // ─── Generic fallback ────────────────────────────────────────────────────────
-  | 'Entity'               // Unclassified entity (catch-all)
+  // ══════════════════════════════════════════════════════════════════════════
+  // EVENTS — things that happen in time
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Event'                // Generic event
+  | 'HistoricalEvent'      // Past event of historical significance
+  | 'ElectionEvent'        // Election or referendum
+  | 'ConflictEvent'        // War, battle, armed skirmish
+  | 'DiplomaticEvent'      // Summit, treaty signing, state visit
+  | 'CrisisEvent'          // Political or economic crisis
+  | 'Protest'              // Demonstration, strike, civil unrest
+  | 'CoupAttempt'          // Coup d'état or insurrection
+  | 'Assassination'        // Assassination or attempt
+  | 'Terrorism'            // Terrorist attack or threat
+  | 'Sanction'             // Sanctions imposed or lifted
+  | 'Treaty'               // International treaty or agreement
+  | 'NaturalDisaster'      // Earthquake, flood, hurricane, etc.
+  | 'PandemicEvent'        // Disease outbreak or pandemic
+  | 'ClimateEvent'         // Heatwave, wildfire, flood, storm
+  | 'SpaceEvent'           // Launch, mission, discovery in space
+  | 'TechnologicalEvent'   // Major tech launch, hack, outage
+  | 'CyberAttack'          // Cyber attack or breach
+  | 'DataBreach'           // Data leak / breach event
+  | 'EconomicRelease'      // Official economic data publication
+  | 'CentralBankAction'    // Rate decision, QE/QT, forward guidance
+  | 'MacroEvent'           // Major macroeconomic event
+  | 'IPO'                  // Initial public offering
+  | 'Merger'               // M&A event
+  | 'Spinoff'              // Corporate demerger
+  | 'Bankruptcy'           // Bankruptcy or insolvency filing
+  | 'ProductLaunch'        // New product or service launch
+  | 'ScientificDiscovery'  // Published discovery or breakthrough
+  | 'LegalRuling'          // Court ruling, verdict, judgement
+  | 'Legislation'          // Bill passed or law enacted
+  | 'Award'                // Prize or award given
+  | 'Birth'                // Person born
+  | 'Death'                // Person died
+  | 'Appointment'          // Leadership appointment or resignation
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // THINGS — physical and digital objects
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Product'              // Commercial product or service
+  | 'Commodity'            // Raw material (oil, gold, wheat, etc.)
+  | 'Resource'             // Natural or strategic resource
+  | 'Currency'             // Fiat currency
+  | 'Cryptocurrency'       // Digital / crypto asset
+  | 'Token'                // Blockchain token or NFT
+  | 'FinancialInstrument'  // Financial instrument (generic)
+  | 'Equity'               // Stock / share
+  | 'Bond'                 // Debt instrument
+  | 'Derivative'           // Options, futures, swaps
+  | 'ETFProduct'           // Exchange-traded product
+  | 'RealEstate'           // Property or land
+  | 'Infrastructure'       // Physical infrastructure (roads, grids, pipes)
+  | 'Weapon'               // Weapons system or platform
+  | 'Drug'                 // Pharmaceutical or controlled substance
+  | 'Food'                 // Food product or agricultural commodity
+  | 'Energy'               // Energy source or carrier
+  | 'Software'             // Software application or system
+  | 'Hardware'             // Physical computing device
+  | 'Patent'               // Intellectual property / patent
+  | 'Trademark'            // Brand / trademark
+  | 'Copyright'            // Creative work with copyright
+  | 'Licence'              // Regulatory or IP licence
+  | 'Contract'             // Legal contract or agreement
+  | 'Artifact'             // Cultural or historical object
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // IDEAS — knowledge, beliefs, abstractions
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Concept'              // Abstract idea or intellectual construct
+  | 'Theory'               // Scientific or philosophical theory
+  | 'Ideology'             // Political, economic, or social ideology
+  | 'Belief'               // Religious or philosophical belief system
+  | 'Norm'                 // Social norm or convention
+  | 'Law'                  // Legal statute or regulation
+  | 'Policy'               // Government or corporate policy
+  | 'Regulation'           // Regulatory rule
+  | 'Standard'             // Technical or industry standard
+  | 'Narrative'            // Dominant narrative or framing
+  | 'Myth'                 // Cultural myth or legend
+  | 'Meme'                 // Cultural / internet meme
+  | 'Propaganda'           // State or institutional propaganda
+  | 'Disinformation'       // Deliberate false information
+  | 'Rumour'               // Unverified claim in circulation
+  | 'Forecast'             // Prediction or projection
+  | 'Hypothesis'           // Testable hypothesis
+  | 'Discovery'            // Scientific or technological discovery
+  | 'Trend'                // Directional movement or pattern
+  | 'Indicator'            // Measurable proxy (GDP, CPI, PMI)
+  | 'Metric'               // Quantitative measure
+  | 'Risk'                 // Identified risk or threat
+  | 'Opportunity'          // Identified opportunity
+  | 'Signal'               // Intelligence signal or market signal
+  | 'Revelation'           // Synthesised insight (Oracle output)
+  | 'Sentiment'            // Aggregate mood or opinion
+  | 'Culture'              // Shared cultural system
+  | 'Language'             // Natural language
+  | 'Religion'             // Religious system
+  | 'ScienceField'         // Academic discipline
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // INFORMATION — documents, data, media
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Document'             // Generic document
+  | 'Article'              // News article or opinion piece
+  | 'ResearchPaper'        // Academic or scientific paper
+  | 'Book'                 // Published book
+  | 'Report'               // Official or analytical report
+  | 'Dataset'              // Structured data collection
+  | 'Transcript'           // Speech, hearing, or call transcript
+  | 'PressRelease'         // Official press release
+  | 'EarningsReport'       // Corporate financial filing
+  | 'GovernmentFiling'     // Regulatory or government filing
+  | 'CourtFiling'          // Legal filing / pleading
+  | 'Lawsuit'              // Litigation case
+  | 'SocialPost'           // Social media post
+  | 'Broadcast'            // TV, radio, or podcast broadcast
+  | 'Video'                // Video content
+  | 'Podcast'              // Audio podcast
+  | 'Survey'               // Survey or poll
+  | 'Intelligence'         // Raw intelligence or OSINT report
+  | 'Leak'                 // Leaked document or information
+  | 'Whistleblow'          // Whistleblower disclosure
+  | 'DataFeed'             // Live data feed or API stream
+  | 'TimeSeriesPoint'      // Single time-series data point
+  | 'SentimentPoint'       // Single sentiment measurement
+  | 'PriceSnapshot'        // Point-in-time price record
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PROCESSES & SYSTEMS — ongoing dynamics
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Process'              // Generic ongoing process
+  | 'SupplyChain'          // Production and distribution chain
+  | 'TradeRoute'           // Commercial trade route
+  | 'Pipeline'             // Physical pipeline (oil, gas, data)
+  | 'Network'              // Relationship network or graph
+  | 'Market'               // Market for goods, services, or assets
+  | 'Industry'             // Sector of economic activity
+  | 'EconomicSector'       // Broad economic sector
+  | 'Regime'               // Systemic state (political, market, environmental)
+  | 'CausalChain'          // Chain of causation between events
+  | 'Channel'              // Transmission channel (risk, narrative, contagion)
+  | 'Cycle'                // Economic, business, or natural cycle
+  | 'System'               // Complex adaptive system
+  | 'Ecosystem'            // Economic or biological ecosystem (dual use)
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // BIOLOGICAL — life and nature
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Species'              // Biological species
+  | 'Disease'              // Disease or pathogen
+  | 'Gene'                 // Gene or genetic marker
+  | 'Drug'                 // (Pharmaceutical — also in Things)
+  | 'BiologicalSystem'     // Organ system, immune system, etc.
+  | 'Climate'              // Climate system or zone
+  | 'NaturalResource'      // Water, soil, air, forest, etc.
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DIGITAL / TECH INFRASTRUCTURE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Technology'           // Technology concept or field
+  | 'Algorithm'            // Computational algorithm
+  | 'Model'                // AI / quantitative / scientific model
+  | 'API'                  // Application programming interface
+  | 'Database'             // Data store or warehouse
+  | 'Blockchain'           // Distributed ledger / L1 / L2
+  | 'SmartContract'        // On-chain smart contract
+  | 'CryptoWallet'         // Blockchain wallet address
+  | 'Domain'               // Internet domain
+  | 'Platform'             // Digital platform
+  | 'Protocol'             // Network or application protocol
+  | 'Vulnerability'        // Software / security vulnerability
+  | 'Exploit'              // Cyber exploit or attack vector
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // MARKET / TRADING (Forage-specific layer)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'PredictionMarket'     // Binary prediction market
+  | 'OddsSnapshot'         // Price snapshot on a prediction market
+  | 'Trade'                // Executed trade
+  | 'Order'                // Placed order
+  | 'Position'             // Open market position
+  | 'Portfolio'            // Portfolio of positions
+  | 'Execution'            // Fill/execution record
+  | 'Venue'                // Trading venue
+  | 'Instrument'           // Tradeable instrument (epic, ticker, etc.)
+  | 'SpreadBet'            // Spread bet position
+  | 'CFD'                  // Contract for difference
+  | 'PredictionOutcome'    // Resolved prediction market outcome
+  | 'Arbitrage'            // Cross-venue arbitrage opportunity
+  | 'Source'               // Intelligence source node
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SIMULATION (MiroFish layer)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Scenario'             // What-if scenario
+  | 'SimAgent'             // Simulation agent persona
+  | 'SimEpisode'           // Simulation run / episode
+  | 'SimulatedOutcome'     // Output of a simulation
+  | 'SimulatedCrash'       // Simulated crash scenario
+  | 'SimulatedNarrative'   // Simulated narrative evolution
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DATA PROVENANCE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'DataSource'           // Origin system or feed
+  | 'RawData'              // Unprocessed ingested data
+  | 'InformationSource'    // Human or machine intelligence source
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CRASH / SYSTEMIC RISK (specialist layer)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'MarketCrash'          | 'SectorCrash'           | 'FlashCrash'
+  | 'CurrencyCrisis'       | 'SovereignDefault'       | 'BankRun'
+  | 'LiquidityCrisis'      | 'CrashMechanism'         | 'MarginCall'
+  | 'DebtContagion'        | 'PanicSelling'           | 'HerdBehavior'
+  | 'AlgorithmicCascade'   | 'RiskChannel'            | 'LeverageExposure'
+  | 'DerivativeExposure'   | 'CreditLine'             | 'CollateralChain'
+  | 'FundingChannel'       | 'SystemicVulnerability'  | 'ConcentrationRisk'
+  | 'MaturityMismatch'     | 'HiddenLeverage'         | 'RegulatoryCap'
+  | 'CrashFactor'          | 'MonetaryShock'          | 'GeopoliticalShock'
+  | 'PandemicShock'        | 'TechFailure'            | 'FraudRevelation'
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // LEGACY / COMPATIBILITY
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'LegalEntity'          | 'AutonomousAgent'        | 'FinancialInstitution'
+  | 'Corporation'          | 'SoleProprietor'         | 'Actor'
+  | 'Asset'                | 'DebtInstrument'         | 'EquityInstrument'
+  | 'DerivativeInstrument' | 'JobTitle'               | 'EmailPattern'
+  | 'SentimentPoint'       | 'MacroEvent'             | 'SanctionEvent'
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CATCH-ALL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  | 'Entity'               // Unclassified — use when type is genuinely unknown
   | 'Unknown';             // Type not yet determined
 
 export type RelationType =
@@ -429,9 +615,225 @@ export type RelationType =
   | 'validates'             // Data/Model validates Hypothesis/Signal
   | 'refutes'               // Data/Model refutes Hypothesis/Signal
 
-  // ─── Generic / catch-all ─────────────────────────────────────────────────────
-  | 'linked_to'             // Generic unclassified link
-  | 'same_as';              // Entity identity equivalence (owl:sameAs)
+  // ─── Spatial / Geographic ────────────────────────────────────────────────────
+  | 'located_in'            // Entity located in Place
+  | 'operates_in'           // Entity operates in Region/Nation
+  | 'headquartered_in'      // Org HQ in City/Nation
+  | 'borders'               // Nation/Region borders another
+  | 'contains_place'        // Place contains sub-place
+  | 'adjacent_to'           // Geographically adjacent
+  | 'controls_territory'    // Political/military control of territory
+  | 'has_jurisdiction'      // Legal jurisdiction over entity/place
+
+  // ─── Temporal ────────────────────────────────────────────────────────────────
+  | 'precedes'              // A precedes B in time
+  | 'follows'               // A follows B in time
+  | 'concurrent_with'       // Events overlap in time
+  | 'triggered_by'          // Event triggered by prior event
+  | 'led_to'                // A led to B (causal + temporal)
+  | 'duration_of'           // Event spans a time period
+
+  // ─── Political / Governance ──────────────────────────────────────────────────
+  | 'governs'               // Government/leader governs entity/place
+  | 'governed_by'           // Entity governed by authority
+  | 'allied_with'           // Nation/faction allied with another
+  | 'at_war_with'           // Nation/faction in armed conflict with
+  | 'sanctions'             // Entity sanctions another
+  | 'recognises'            // Nation recognises another (diplomatic)
+  | 'negotiates_with'       // Parties in negotiation
+  | 'signs_treaty_with'     // Nations sign treaty
+  | 'opposes'               // Entity opposes another politically/ideologically
+  | 'supports_politically'  // Entity supports another politically
+  | 'lobbies'               // Entity lobbies government/regulator
+  | 'appoints'              // Authority appoints person to role
+  | 'elected_by'            // Person elected by constituency
+
+  // ─── Legal ───────────────────────────────────────────────────────────────────
+  | 'sues'                  // Entity sues another
+  | 'sued_by'               // Entity is sued by another
+  | 'convicted_of'          // Person/entity convicted of offence
+  | 'acquitted_of'          // Person/entity acquitted
+  | 'fined_by'              // Entity fined by regulator/court
+  | 'banned_from'           // Entity banned from activity/market
+  | 'licensed_by'           // Entity licensed by authority
+  | 'owns_ip'               // Entity owns IP (patent, trademark, copyright)
+  | 'licences_to'           // Entity licences IP to another
+  | 'bound_by'              // Entity bound by contract/law/treaty
+  | 'compliant_with'        // Entity compliant with regulation/standard
+  | 'in_violation_of'       // Entity in violation of rule/law
+
+  // ─── Social / Human ──────────────────────────────────────────────────────────
+  | 'knows'                 // Person knows another person
+  | 'married_to'            // Marital relationship
+  | 'family_of'             // Family relationship
+  | 'mentor_of'             // Mentor-mentee relationship
+  | 'member_of'             // Person/entity member of group/org
+  | 'friends_with'          // Social friendship
+  | 'ideologically_aligned' // Shared ideology or worldview
+  | 'ideologically_opposed' // Opposing ideology or worldview
+  | 'studied_at'            // Person studied at institution
+  | 'collaborated_with'     // Joint intellectual/creative work
+  | 'interviewed'           // Journalist interviewed person
+  | 'testified'             // Person testified about entity/event
+
+  // ─── Economic / Trade ────────────────────────────────────────────────────────
+  | 'supplies_to'           // Supplier → customer
+  | 'purchases_from'        // Buyer ← supplier
+  | 'competes_with'         // Market competitors
+  | 'complements'           // Products/services complement each other
+  | 'depends_on'            // Entity depends on another (supply, tech, finance)
+  | 'exports_to'            // Nation/entity exports to another
+  | 'imports_from'          // Nation/entity imports from another
+  | 'employs'               // Org employs person(s)
+  | 'employed_by'           // Person employed by org
+  | 'contracted_to'         // Entity contracted to deliver to another
+  | 'subsidised_by'         // Entity receives subsidy from government
+  | 'taxed_by'              // Entity taxed by jurisdiction
+  | 'insures'               // Entity insures another
+  | 'creditor_of'           // Entity holds debt of another
+  | 'debtor_of'             // Entity owes debt to another
+
+  // ─── Scientific / Knowledge ──────────────────────────────────────────────────
+  | 'discovered'            // Person/org discovered concept/species/phenomenon
+  | 'invented'              // Person/org invented technology/product
+  | 'published'             // Person/org published document/paper
+  | 'peer_reviewed_by'      // Paper reviewed by institution/individual
+  | 'cites'                 // Document cites another document
+  | 'cited_by'              // Document cited by another
+  | 'builds_on'             // Theory/model builds on prior work
+  | 'contradicts'           // Claim contradicts another
+  | 'confirms'              // Data/study confirms hypothesis
+  | 'disproves'             // Evidence disproves claim
+  | 'classifies'            // Taxonomy classifies entity
+  | 'instance_of'           // Entity is instance of concept/type
+  | 'type_of'               // More specific type of broader concept
+
+  // ─── Biological / Ecological ─────────────────────────────────────────────────
+  | 'predates'              // Species predates another
+  | 'symbiotic_with'        // Species in symbiotic relationship
+  | 'parasitic_on'          // Parasite on host
+  | 'pollinates'            // Species pollinates plant
+  | 'infects'               // Pathogen infects host
+  | 'transmits'             // Vector transmits pathogen
+  | 'ancestor_of'           // Evolutionary/family ancestor
+  | 'descended_from'        // Evolutionary descent
+  | 'inhabits'              // Species inhabits ecosystem
+  | 'threatens'             // Entity threatens another (biodiversity, security)
+  | 'depends_on_ecosystem'  // Species/community depends on ecosystem
+
+  // ─── Media / Information ─────────────────────────────────────────────────────
+  | 'published_by'          // Content published by outlet
+  | 'authored_by'           // Content authored by person
+  | 'broadcasts'            // Media outlet broadcasts content
+  | 'distributes'           // Platform distributes content
+  | 'censors'               // Authority censors content/entity
+  | 'amplifies'             // Platform/actor amplifies message
+  | 'suppresses'            // Actor suppresses information
+  | 'leaked_by'             // Information leaked by source
+  | 'fact_checked_by'       // Claim fact-checked by organisation
+  | 'mentions'              // Content mentions entity
+  | 'covers'                // Outlet covers topic/event
+  | 'broke_story'           // Source first reported story
+  | 'reacted_to'            // Entity reacted to news/event
+  | 'announced'             // Entity made announcement
+  | 'disclosed'             // Entity disclosed information
+
+  // ─── Technology / Digital ────────────────────────────────────────────────────
+  | 'uses_technology'       // Entity uses tech platform/tool
+  | 'built_on'              // System/product built on platform
+  | 'interoperates_with'    // Systems interoperate
+  | 'forked_from'           // Software forked from another project
+  | 'deployed_on'           // App/contract deployed on infrastructure
+  | 'hosts'                 // Platform hosts content/service
+  | 'powered_by'            // System powered by energy/platform
+  | 'hacked_by'             // Entity hacked/breached by actor
+  | 'exploits_vulnerability' // Actor exploits security flaw
+  | 'patched_by'            // Vulnerability patched by entity
+  | 'standard_for'          // Standard applies to domain/product
+
+  // ─── Ownership / Control ─────────────────────────────────────────────────────
+  | 'owns'                  // Ownership of entity/asset
+  | 'owned_by'              // Entity owned by actor
+  | 'controls'              // Control without full ownership
+  | 'controlled_by'         // Entity controlled by actor
+  | 'subsidiary_of'         // Corporate subsidiary
+  | 'parent_of'             // Corporate parent
+  | 'joint_venture_with'    // JV partnership
+  | 'shareholder_of'        // Entity holds shares in another
+  | 'majority_owner_of'     // >50% ownership stake
+
+  // ─── Crypto / DeFi ───────────────────────────────────────────────────────────
+  | 'transacted_with'       // Wallet transacted with another
+  | 'holds_token'           // Wallet holds token/NFT
+  | 'staked_in'             // Wallet staked in protocol
+  | 'liquidated_by'         // Position liquidated
+  | 'bridged_to'            // Asset bridged to another chain
+  | 'minted'                // Token/NFT minted by entity
+  | 'burned'                // Token burned by protocol
+
+  // ─── Trading & Markets ───────────────────────────────────────────────────────
+  | 'trades_on'             // Actor trades on venue
+  | 'holds_position'        // Actor holds position in instrument
+  | 'executed'              // Actor executed trade
+  | 'placed_order'          // Actor placed order
+  | 'priced_at'             // Instrument priced at snapshot
+  | 'settled_as'            // Market settled as outcome
+  | 'arbitrage_between'     // Arb between venues/markets
+  | 'monitors'              // Agent monitors market/signal
+  | 'copied_from'           // Position copied from source
+  | 'diverges_from'         // Signal diverges from another
+  | 'confirmed_by'          // Signal confirmed by evidence
+  | 'references'            // Signal references instrument/market
+
+  // ─── Simulation ──────────────────────────────────────────────────────────────
+  | 'READS_FROM'            | 'SIMULATES'             | 'HYPOTHESIZES'
+  | 'SCENARIO_TARGETS'      | 'SCENARIO_PRODUCES'     | 'SIMULATED_IMPACT'
+  | 'BASED_ON'              | 'PART_OF_CHAIN'
+  | 'PORTFOLIO_HOLDS'       | 'PORTFOLIO_EXPOSED_TO'
+
+  // ─── Crash / Systemic Risk ───────────────────────────────────────────────────
+  | 'TRIGGERED'             | 'SHOCKED'               | 'CRASHED'
+  | 'EXPOSED_TO'            | 'VULNERABLE_TO'         | 'CONCENTRATED_IN'
+  | 'LEVERAGED_IN'          | 'TRANSMITTED_THROUGH'   | 'PROPAGATED_TO'
+  | 'CASCADED_TO'           | 'FORCED_LIQUIDATION'    | 'AMPLIFIED_CRASH'
+  | 'DAMPENED_CRASH'        | 'ACCELERATED'           | 'DELAYED'
+  | 'COUNTERPARTY_OF'       | 'GUARANTEES'            | 'COLLATERALIZED_BY'
+  | 'FUNDED_BY'             | 'REHYPOTHECATED_TO'     | 'BAILED_OUT'
+  | 'INTERVENED_IN'         | 'CIRCUIT_BREAKER'       | 'NATIONALIZED'
+
+  // ─── Regime / Narrative ──────────────────────────────────────────────────────
+  | 'IN_REGIME'             | 'REGIME_TRANSITION'     | 'TRANSMITS_THROUGH'
+  | 'CHANNEL_AFFECTS'       | 'DRIVES_NARRATIVE'      | 'NARRATIVE_INFLUENCES'
+
+  // ─── Data Provenance ─────────────────────────────────────────────────────────
+  | 'EXTRACTED_FROM'        | 'CONTAINS'
+
+  // ─── Research / Knowledge ────────────────────────────────────────────────────
+  | 'derived_from'          // Model/signal derived from source
+  | 'trained_on'            // Model trained on dataset
+  | 'predicts_outcome'      // Model predicts outcome
+  | 'validates'             // Evidence validates hypothesis
+  | 'refutes'               // Evidence refutes hypothesis
+
+  // ─── Legacy / FIBO compatibility ─────────────────────────────────────────────
+  | 'holds_role'            | 'is_agent_in'           | 'has_authorized_agent'
+  | 'issues'                | 'investor_in'           | 'guarantees'
+  | 'has_domain'            | 'has_email_pattern'
+  | 'reports_to'            | 'founded_by'            | 'board_member_of'
+  | 'causes'                | 'caused_by'             | 'predicts'
+  | 'predicted_by'          | 'correlates_with'       | 'impacts'
+  | 'impacted_by'           | 'enables'               | 'prevents'
+  | 'dampens'               | 'indicates'             | 'signals'
+  | 'part_of'               | 'related_to'            | 'supports'
+  | 'influences'            | 'advises'               | 'invests_in'
+  | 'regulates'             | 'audits'                | 'partners_with'
+  | 'funds'                 | 'created_by'            | 'endorsed_by'
+  | 'criticised_by'         | 'sanctioned_by'         | 'investigated_by'
+  | 'acquired'              | 'merged_with'           | 'leads'
+
+  // ─── Generic catch-all ───────────────────────────────────────────────────────
+  | 'linked_to'             // Unclassified connection — use sparingly
+  | 'same_as';              // Identity equivalence (owl:sameAs)
 
 export type Regime = 'normal' | 'stressed' | 'pre_tipping' | 'post_event';
 
