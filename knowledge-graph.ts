@@ -828,10 +828,11 @@ class KnowledgeStore {
     );
   }
 
-  async findNodesByName(nameLower: string, type?: string): Promise<GraphNode[]> {
+  async findNodesByName(nameLower: string, type?: string, limit = 50): Promise<GraphNode[]> {
+    const cap = Math.min(limit, 500);
     const query = type
-      ? `MATCH (n:Entity) WHERE n.name_lower CONTAINS $name AND n.type = $type RETURN n ORDER BY n.confidence DESC LIMIT 20`
-      : `MATCH (n:Entity) WHERE n.name_lower CONTAINS $name RETURN n ORDER BY n.confidence DESC LIMIT 20`;
+      ? `MATCH (n:Entity) WHERE n.name_lower CONTAINS $name AND n.type = $type RETURN n ORDER BY n.confidence DESC LIMIT ${cap}`
+      : `MATCH (n:Entity) WHERE n.name_lower CONTAINS $name RETURN n ORDER BY n.confidence DESC LIMIT ${cap}`;
 
     const params: any = { name: nameLower };
     if (type) params.type = type;
@@ -1571,9 +1572,9 @@ export class KnowledgeGraph {
 
   // ── QUERIES ───────────────────────────────────────────────────────────────
 
-  async findEntity(name: string, type?: EntityType): Promise<GraphNode[]> {
+  async findEntity(name: string, type?: EntityType, limit = 50): Promise<GraphNode[]> {
     if (!this.ready) return [];
-    const nodes = await this.db.findNodesByName(name.toLowerCase(), type);
+    const nodes = await this.db.findNodesByName(name.toLowerCase(), type, limit);
     return nodes.sort((a, b) => {
       const aExact = a.name.toLowerCase() === name.toLowerCase() ? 1 : 0;
       const bExact = b.name.toLowerCase() === name.toLowerCase() ? 1 : 0;

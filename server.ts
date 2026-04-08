@@ -248,10 +248,10 @@ app.post('/query', async (req: Request, res: Response) => {
     let entities;
     if (name) {
       // Named lookup (existing behaviour)
-      entities = await knowledgeGraph.findEntity(name, type);
+      entities = await knowledgeGraph.findEntity(name, type, limit);
     } else if (type) {
       // Type-only listing — used by Oracle and agent collectors
-      entities = await knowledgeGraph.findEntity('', type);
+      entities = await knowledgeGraph.findEntity('', type, limit);
     } else {
       res.status(400).json({ error: 'name or type is required' });
       return;
@@ -531,9 +531,30 @@ app.post('/ingest/bulk', async (req: Request, res: Response) => {
     return;
   }
   try {
-    const { entities = [], connections = [] } = req.body;
+    // Accept both 'nodes' (agent/collector convention) and 'entities' (internal convention)
+    const { entities, nodes, connections = [] } = req.body;
+    const rawList: any[] = entities ?? nodes ?? [];
 
-    const entityResult = await knowledgeGraph.addEntities(entities);
+    // Normalize flat agent node format into addEntities shape.
+    // Agents send: { id, type, name, source, confidence, venue, yes_price, ... }
+    // addEntities expects: { type, name, source, confidence, properties }
+    // Unknown top-level fields are folded into properties so no data is lost.
+    const KNOWN_FIELDS = new Set(['type', 'name', 'source', 'confidence', 'properties']);
+    const entityList = rawList.map((n: any) => {
+      const { type, name, source, confidence, properties: existingProps, ...rest } = n;
+      // Remove internal/index fields that shouldn't go into properties
+      delete rest.id;
+      delete rest._force_new;
+      return {
+        type,
+        name,
+        source,
+        confidence,
+        properties: { ...existingProps, ...rest },
+      };
+    });
+
+    const entityResult = await knowledgeGraph.addEntities(entityList);
     const connResult = await knowledgeGraph.addConnections(connections);
 
     res.status(201).json({
