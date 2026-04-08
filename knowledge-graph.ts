@@ -43,11 +43,15 @@ export type EntityType =
   // Geographic/Spatial
   | 'Location'             // FIBO: GeographicLocation
   | 'Jurisdiction'         // FIBO: Jurisdiction (legal jurisdiction)
+  | 'City'                 // City / municipality
+  | 'Region'               // Sub-national region / state / county
+  | 'Nation'               // Sovereign nation / country
   
   // Industry/Market
   | 'Industry'             // FIBO: IndustrySector
   | 'Market'               // FIBO: Market
   | 'EconomicSector'       // FIBO: EconomicSector
+  | 'Product'              // Product or service offering
   
   // Information/Knowledge
   | 'Technology'
@@ -1410,6 +1414,12 @@ export class KnowledgeGraph {
 
   isReady(): boolean {
     return this.ready;
+  }
+
+  /** Direct Cypher query — used by connection-enricher and mirofish-realtime-bridge. */
+  async rawCypherQuery(query: string, params: Record<string, any> = {}): Promise<any[]> {
+    if (!this.ready) return [];
+    return this.db.graphQuery(query, params);
   }
 
   async isHealthy(): Promise<boolean> {
