@@ -1800,7 +1800,7 @@ app.post('/plan/scenarios', async (req: Request, res: Response) => {
 async function start() {
   await knowledgeGraph.init();
 
-  app.listen(PORT, () => {
+  app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Forage Reality Graph API running on port ${PORT}`);
     console.log(`Health: http://localhost:${PORT}/health`);
     console.log(`Features: FIBO schema, ULEM dual-hash, Hawkes contagion, Adamic-Adar prediction`);
