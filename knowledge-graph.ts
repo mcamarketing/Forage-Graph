@@ -40,31 +40,6 @@ export type EntityType =
   | 'DerivativeInstrument' // FIBO: DerivativeInstrument (options, futures)
   | 'Asset'                // FIBO: Asset (any asset class)
   
-  // ═══════════════════════════════════════════════════════════════════════════
-  // GEOGRAPHIC HIERARCHY [geo-001]
-  // Nation → Region → City → District → Village resolution
-  // ═══════════════════════════════════════════════════════════════════════════
-  | 'Nation'               // Country: Russia, USA, Brazil, etc.
-  | 'Region'               // Sub-national: Tatarstan, California, Bavaria
-  | 'City'                 // Urban center: Kazan, San Francisco, Munich
-  | 'District'             // City sub-division: Vtorov, SoMa, Maxvorstadt
-  | 'Village'              // Rural settlement: smallest geographic unit
-  
-  // Geographic Attributes
-  | 'Culture'              // Cultural group: Tatar, Catalan, Yoruba
-  | 'Religion'            // Faith system: Islam, Christianity, Buddhism
-  | 'Language'            // Language/dialect: Tatar, Catalan, Hausa
-  
-  // Brand & Product [brand-001]
-  | 'Brand'                // Brand entity: Zara, Apple, Samsung
-  | 'Product'              // Product category: dress, smartphone,电动车
-  | 'ProductCategory'      // High-level category: fashion, electronics
-  
-  // Identity & Belief [identity-001]
-  | 'IdentityGroup'        // Social group with shared identity
-  | 'Belief'               // Specific belief or value
-  | 'Narrative'            // Shared story or discourse
-  
   // Geographic/Spatial
   | 'Location'             // FIBO: GeographicLocation
   | 'Jurisdiction'         // FIBO: Jurisdiction (legal jurisdiction)
@@ -72,7 +47,7 @@ export type EntityType =
   // Industry/Market
   | 'Industry'             // FIBO: IndustrySector
   | 'Market'               // FIBO: Market
-  | 'EconomicSector'      // FIBO: EconomicSector
+  | 'EconomicSector'       // FIBO: EconomicSector
   
   // Information/Knowledge
   | 'Technology'
@@ -157,19 +132,7 @@ export type EntityType =
   | 'GeopoliticalShock'    // War, sanctions, political crisis
   | 'PandemicShock'        // Health crisis impact
   | 'TechFailure'          // Infrastructure/system failure
-  | 'FraudRevelation'      // Major fraud uncovered (e.g., Madoff)
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SELF-ORGANIZING AGENT ECOSYSTEM [ecosystem-001]
-  // Gig marketplace, tokenomics, coalitions, and payment flows
-  // ═══════════════════════════════════════════════════════════════════════════
-  | 'Gig'                  // Work unit posted by a Client, performed by an AutonomousAgent
-  | 'Token'                // Utility/payment token for agent ecosystem
-  | 'Client'               // FIBO: Client — entity that posts Gigs and funds work
-  | 'Payment'              // Payment event between Client → AutonomousAgent (via Token)
-  | 'Burn'                 // Token burn event (deflationary mechanism)
-  | 'Coalition'            // Ad-hoc agent coalition formed for complex Gigs
-  | 'Simulation';          // End-to-end simulation run (wraps SimEpisode set)
+  | 'FraudRevelation';     // Major fraud uncovered (e.g., Madoff)
 
 export type RelationType =
   // FIBO Role Pattern Relationships [fibo-role-001]
@@ -315,41 +278,7 @@ export type RelationType =
 
   // Data Provenance
   | 'EXTRACTED_FROM'        // RawData → DataSource
-  | 'CONTAINS'              // RawData → Entity (extracted from raw data)
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SELF-ORGANIZING AGENT ECOSYSTEM [ecosystem-rel-001]
-  // Gig lifecycle, token flows, coalition formation
-  // ═══════════════════════════════════════════════════════════════════════════
-  | 'PERFORMED'             // AutonomousAgent → Gig (agent completed the gig)
-  | 'HIRES'                 // Client → AutonomousAgent (engagement relationship)
-  | 'TOKEN_OF'              // Token → ecosystem entity (token belongs to ecosystem)
-  | 'PARTICIPATED_IN'       // AutonomousAgent → Coalition (agent joined coalition)
-  | 'BURN_EVENT'            // Burn → Token (tokens destroyed)
-  | 'COALITION_WITH'        // AutonomousAgent → AutonomousAgent (coalition membership)
-  | 'FUNDS'                 // Payment → Gig | Client → AutonomousAgent (funding flow)
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CROSS-CULTURAL PERCEPTION EDGES [perception-001]
-  // How culture A perceives culture B, brands, products, narratives
-  // Properties: sentiment (-1..1), trust (-1..1), aspiration (-1..1), 
-  //             hostility (-1..1), familiarity (0..1), velocity, reach
-  // ═══════════════════════════════════════════════════════════════════════════
-  | 'PERCEIVES'             // Person/Culture/Region perceives entity (brand, culture, product)
-  | 'PREFERS_OVER'          // Person prefers brand A over brand B
-  | 'IDENTIFIES_WITH'       // Person identifies with culture/identity group
-  | 'ADOPTS_FROM'           // City/Region adopts cultural element from another
-  | 'CLASS_PURCHASES'       // Person purchases based on class bracket
-  | 'TRUSTS_IN'             // Person/Region trusts institution/brand
-  | 'NARRATIVE_FLOWS'       // Narrative flows across platforms/regions
-  | 'BUYS'                  // Person → Product (purchase behavior)
-  | 'ASPIRES_TO'            // Person aspires to cultural element
-  | 'DISTRUSTS'             // Person distrusts entity (hostility edge)
-  
-  // Geographic Hierarchy Edges
-  | 'LOCATED_IN'            // Region → Nation, City → Region, etc.
-  | 'BELONGS_TO'            // Person belongs to IdentityGroup (strength: 0-1)
-  | 'SHARES_MYTH';          // IdentityGroup shares narrative/myth (salience: 0-1)
+  | 'CONTAINS';             // RawData → Entity (extracted from raw data)
 
 export type Regime = 'normal' | 'stressed' | 'pre_tipping' | 'post_event';
 
@@ -415,19 +344,6 @@ export interface GraphStats {
   total_edges: number;
   nodes_by_type: Record<string, number>;
   last_updated: string;
-}
-
-// ─── PROVENANCE ENVELOPE [ecosystem-prov-001] ────────────────────────────────
-// Tracks the origin, cost, and agent attribution for every graph mutation.
-// Attached to GraphEdge.properties or GraphNode.properties as `provenance`.
-
-export interface ProvenanceEnvelope {
-  tool_name: string;        // MCP tool / n8n node that produced the data
-  timestamp: string;        // ISO-8601 UTC
-  source_url?: string;      // Original data source URL
-  cost?: number;            // Token cost for the operation (in smallest unit)
-  agent_id: string;         // AutonomousAgent ULEM ID that performed the action
-  tx_hash?: string;         // On-chain transaction hash (if token transfer)
 }
 
 export interface Claim {
@@ -920,13 +836,8 @@ class KnowledgeStore {
     const params: any = { name: nameLower };
     if (type) params.type = type;
 
-    console.log('[GRAPH] findNodesByName query:', query, 'params:', JSON.stringify(params));
     const rows = await this.graphQuery(query, params);
-    console.log('[GRAPH] findNodesByName raw rows count:', rows.length, 'first:', rows.length > 0 ? JSON.stringify(rows[0]).substring(0, 300) : 'none');
-    
-    const result = rows.map(r => this.rowToNode(r[0])).filter(Boolean) as GraphNode[];
-    console.log('[GRAPH] findNodesByName result count:', result.length);
-    return result;
+    return rows.map(r => this.rowToNode(r[0])).filter(Boolean) as GraphNode[];
   }
 
   async getOutboundEdges(nodeId: string, relation?: string): Promise<GraphEdge[]> {
@@ -1198,68 +1109,20 @@ class KnowledgeStore {
 
   private rowToNode(raw: any): GraphNode | null {
     if (!raw) return null;
-    
-    // Handle both FalkorDB node format and simple map format
-    let props: any = {};
-    
-    if (raw._internal_id !== undefined) {
-      // FalkorDB format: properties stored as "id:value": ["prop_name", "prop_value"]
-      // Extract all property pairs from the raw object
-      for (const [key, value] of Object.entries(raw)) {
-        if (key.startsWith('id,')) {
-          // This is a property entry: [prop_name, prop_value]
-          const propEntry = value as any[];
-          if (Array.isArray(propEntry) && propEntry.length >= 2) {
-            const propName = propEntry[0];
-            const propValue = propEntry[1];
-            props[propName] = propValue;
-          }
-        } else if (!key.startsWith('_')) {
-          // Direct property (like id, type stored directly)
-          props[key] = value;
-        }
-      }
-      // Also extract from _labels if present
-      if (raw._labels && Array.isArray(raw._labels) && raw._labels.length >= 2) {
-        const labels = raw._labels[1];
-        if (Array.isArray(labels) && labels.length > 0) {
-          props.type = labels[0]; // First label as type
-        }
-      }
-    } else if (raw.properties) {
-      props = raw.properties;
-    } else {
-      props = raw;
-    }
-    
-    // If no valid name, skip this node
-    if (!props || !props.name) {
-      console.log('[GRAPH] Skipping node with no name, props:', JSON.stringify(props).substring(0, 200), 'raw:', JSON.stringify(raw).substring(0, 200));
-      return null;
-    }
+    const props = raw.properties || raw;
     try {
-      // FIX: Handle non-array sources from DB - sources could be string or missing
-      const sourcesRaw = this.parseJsonField(props.sources);
-      let sources: string[] = [];
-      if (Array.isArray(sourcesRaw)) {
-        sources = sourcesRaw;
-      } else if (sourcesRaw) {
-        sources = [sourcesRaw]; // Single string, wrap in array
-      }
-      
       return {
         id: props.id,
         type: props.type,
         name: props.name,
-        properties: this.parseJsonField(props.properties) || {},
-        sources: sources,
+        properties: this.parseJsonField(props.properties),
+        sources: this.parseJsonField(props.sources) || [],
         confidence: parseFloat(props.confidence) || 0.75,
         call_count: parseInt(props.call_count) || 1,
         first_seen: props.first_seen || new Date().toISOString(),
         last_seen: props.last_seen || new Date().toISOString(),
       };
-    } catch (e) {
-      console.log('[GRAPH] rowToNode error:', e, 'raw:', JSON.stringify(raw).substring(0, 200));
+    } catch {
       return null;
     }
   }
@@ -1287,9 +1150,9 @@ class KnowledgeStore {
   }
 
   private parseJsonField(val: any): any {
-    if (val === null || val === undefined) return null;
+    if (!val) return {};
     if (typeof val === 'object') return val;
-    try { return JSON.parse(val); } catch { return null; }
+    try { return JSON.parse(val); } catch { return {}; }
   }
 
   async isHealthy(): Promise<boolean> {
@@ -1299,233 +1162,6 @@ class KnowledgeStore {
       return true;
     } catch {
       return false;
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PERCEPTION EDGE OPERATIONS [perception-002]
-  // Idempotent writes for cross-cultural perception edges
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Upsert a perception edge — idempotent write.
-   * If edge exists, merges confidence and properties (averages for numeric).
-   * Properties: sentiment, trust, aspiration, hostility, familiarity (all -1..1 or 0..1)
-   */
-  async upsertPerceptionEdge(
-    fromName: string,
-    fromType: EntityType,
-    toName: string,
-    toType: EntityType,
-    relation: 'PERCEIVES' | 'PREFERS_OVER' | 'IDENTIFIES_WITH' | 'ADOPTS_FROM' | 
-              'CLASS_PURCHASES' | 'TRUSTS_IN' | 'NARRATIVE_FLOWS' | 'BUYS' | 
-              'ASPIRES_TO' | 'DISTRUSTS' | 'LOCATED_IN' | 'BELONGS_TO' | 'SHARES_MYTH',
-    attrs: {
-      sentiment?: number;
-      trust?: number;
-      aspiration?: number;
-      hostility?: number;
-      familiarity?: number;
-      velocity?: number;
-      reach?: number;
-      volume?: number;
-      frequency?: number;
-      channel?: string;
-      intensity?: number;
-      strength?: number;
-      salience?: number;
-      reason?: string;
-    },
-    source: string,
-    confidence: number = 0.5
-  ): Promise<void> {
-    const fromId = generateCompositeId(generateULEMIdentity(fromType, fromName));
-    const toId = generateCompositeId(generateULEMIdentity(toType, toName));
-    const edgeId = `${fromId}:${relation}:${toId}`;
-    const now = new Date().toISOString();
-
-    const props: Record<string, any> = {
-      relation,
-      source,
-      confidence,
-      call_count: 1,
-      first_seen: now,
-      last_seen: now,
-      ...attrs
-    };
-
-    // Idempotent MERGE — updates if exists, creates if not
-    await this.graphQuery(
-      `MERGE (a:Entity {id: $from_id})
-       ON CREATE SET a.name = $from_name, a.type = $from_type, a.name_lower = toLower($from_name)
-       MERGE (b:Entity {id: $to_id})
-       ON CREATE SET b.name = $to_name, b.type = $to_type, b.name_lower = toLower($to_name)
-       MERGE (a)-[e:RELATES {id: $edge_id}]->(b)
-       SET e.relation = $relation,
-           e.confidence = CASE WHEN e.confidence IS NOT NULL THEN (e.confidence + $confidence) / 2 ELSE $confidence END,
-           e.call_count = coalesce(e.call_count, 0) + 1,
-           e.last_seen = $now
-       SET e += $props`,
-      {
-        from_id: fromId,
-        from_name: fromName,
-        from_type: fromType,
-        to_id: toId,
-        to_name: toName,
-        to_type: toType,
-        edge_id: edgeId,
-        relation,
-        confidence,
-        now,
-        props
-      }
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SIMULATION SEED EXPORT [sim-seed-001]
-  // Export subgraph for MiroFish OASIS seeding
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Export subgraph as MiroFish-compatible JSON.
-   * Includes nodes with properties and edges with weights.
-   */
-  async exportSimSeed(subgraphQuery: string): Promise<{
-    nodes: Array<{ id: string; type: string; name: string; properties: Record<string, any> }>;
-    edges: Array<{ from: string; to: string; relation: string; weight: number }>;
-  }> {
-    const rows = await this.graphQuery(subgraphQuery, {});
-    
-    const nodesMap = new Map<string, any>();
-    const edges: Array<{ from: string; to: string; relation: string; weight: number }> = [];
-
-    for (const row of rows) {
-      // Handle various row formats
-      const n = row.n || row[0];
-      if (n && n.id && n.name) {
-        nodesMap.set(n.id, {
-          id: n.id,
-          type: n.type || 'Entity',
-          name: n.name,
-          properties: n.properties || {}
-        });
-      }
-      
-      // Handle edges if present
-      const r = row.r || row[1];
-      const m = row.m || row[2];
-      if (r && m && r.from_id && m.id) {
-        edges.push({
-          from: r.from_id,
-          to: m.id,
-          relation: r.relation || 'related_to',
-          weight: r.confidence || 0.5
-        });
-      }
-    }
-
-    return {
-      nodes: Array.from(nodesMap.values()),
-      edges
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SIMULATION RESULTS IMPORT [sim-results-001]
-  // Import MiroFish prediction reports back to graph
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Import MiroFish simulation report into graph.
-   * Writes SimAgent, SimEpisode, and prediction edges.
-   */
-  async importSimResults(report: {
-    sim_id: string;
-    agents?: Array<{ id: string; behavior: string; decisions: string[] }>;
-    predictions?: Array<{
-      entity: string;
-      predicted_value: number;
-      confidence: number;
-      horizon: string;
-    }>;
-    narratives?: Array<{
-      topic: string;
-      sentiment: number;
-      velocity: number;
-      reach: number;
-    }>;
-  }): Promise<void> {
-    const now = new Date().toISOString();
-    const simId = `sim_${report.sim_id}`;
-
-    // Create simulation node
-    await this.graphQuery(
-      `MERGE (s:Entity {id: $sim_id})
-       SET s.type = 'Simulation',
-            s.name = 'Simulation ' + $sim_id,
-           s.properties = $properties,
-           s.first_seen = $now,
-           s.last_seen = $now`,
-      {
-        sim_id: simId,
-        now,
-        properties: JSON.stringify({
-          sim_id: report.sim_id,
-          agents_count: report.agents?.length || 0,
-          predictions_count: report.predictions?.length || 0
-        })
-      }
-    );
-
-    // Write prediction edges if present
-    if (report.predictions) {
-      for (const pred of report.predictions) {
-        const entityId = generateCompositeId(generateULEMIdentity('Entity', pred.entity));
-        await this.graphQuery(
-          `MERGE (e:Entity {id: $entity_id})
-           MERGE (s:Entity {id: $sim_id})
-           MERGE (e)-[r:SIMULATED_IMPACT]->(s)
-           SET r.predicted_value = $predicted_value,
-               r.confidence = $confidence,
-               r.horizon = $horizon,
-               r.last_seen = $now`,
-          {
-            entity_id: entityId,
-            sim_id: simId,
-            predicted_value: pred.predicted_value,
-            confidence: pred.confidence,
-            horizon: pred.horizon,
-            now
-          }
-        );
-      }
-    }
-
-    // Write narrative edges if present
-    if (report.narratives) {
-      for (const narr of report.narratives) {
-        const topicId = generateCompositeId(generateULEMIdentity('Narrative', narr.topic));
-        await this.graphQuery(
-          `MERGE (n:Entity {id: $topic_id})
-           SET n.type = 'Narrative', n.name = $topic, n.name_lower = toLower($topic)
-           MERGE (s:Entity {id: $sim_id})
-           MERGE (s)-[r:NARRATIVE_FLOWS]->(n)
-           SET r.sentiment = $sentiment,
-               r.velocity = $velocity,
-               r.reach = $reach,
-               r.last_seen = $now`,
-          {
-            topic_id: topicId,
-            topic: narr.topic,
-            sim_id: simId,
-            sentiment: narr.sentiment,
-            velocity: narr.velocity,
-            reach: narr.reach,
-            now
-          }
-        );
-      }
     }
   }
 }
@@ -1771,18 +1407,12 @@ export class KnowledgeGraph {
     }
   }
 
-  async isHealthy(): Promise<boolean> {
-    return this.ready && this.db.isConnectionReady() && await this.db.isHealthy();
+  isReady(): boolean {
+    return this.ready;
   }
 
-  /**
-   * Execute a raw Cypher query against forage_v1.
-   * Used by hybrid retrieval and migration utilities.
-   * [ecosystem-query-001]
-   */
-  async rawCypherQuery(cypher: string, params: Record<string, any> = {}): Promise<any[]> {
-    if (!this.ready) throw new Error('Graph not initialized');
-    return this.db.graphQuery(cypher, params);
+  async isHealthy(): Promise<boolean> {
+    return this.ready && this.db.isConnectionReady() && await this.db.isHealthy();
   }
 
   // Called after every tool response - now with proper error handling
@@ -2638,22 +2268,7 @@ function buildEdge(
 }
 
 function mergeNodeProperties(existing: GraphNode, incoming: GraphNode): GraphNode {
-  // Defensive: ensure sources is always an array
-  let existingSources: string[] = [];
-  if (Array.isArray(existing.sources)) {
-    existingSources = existing.sources;
-  } else if (existing.sources) {
-    existingSources = [existing.sources];
-  }
-  
-  let incomingSources: string[] = [];
-  if (Array.isArray(incoming.sources)) {
-    incomingSources = incoming.sources;
-  } else if (incoming.sources) {
-    incomingSources = [incoming.sources];
-  }
-  
-  const mergedSources = [...new Set([...existingSources, ...incomingSources])];
+  const mergedSources = [...new Set([...existing.sources, ...incoming.sources])];
   const mergedProps: Record<string, any> = { ...existing.properties };
   for (const [k, v] of Object.entries(incoming.properties)) {
     if (v !== null && v !== undefined && v !== '') {
@@ -2712,101 +2327,6 @@ function cleanProperties(props: Record<string, any>): Record<string, any> {
     if (v !== null && v !== undefined && v !== '') clean[k] = v;
   }
   return clean;
-}
-
-// ─── HYBRID RETRIEVAL SCORING [ecosystem-retrieval-001] ──────────────────────
-// R(node) = alpha * S(semantic) + (1 - alpha) * I(graph)
-// Combines cosine similarity (semantic) with graph-structural importance
-// (degree centrality as proxy for betweenness, which FalkorDB doesn't natively compute).
-
-export interface HybridRetrievalOptions {
-  /** Blending factor: 0 = pure graph, 1 = pure semantic. Default 0.6. */
-  alpha?: number;
-  /** Maximum results to return */
-  limit?: number;
-  /** Filter by entity type(s) */
-  types?: EntityType[];
-  /** Pre-computed semantic scores keyed by node id */
-  semanticScores?: Map<string, number>;
-}
-
-/**
- * Build a Cypher query that scores nodes via hybrid retrieval:
- *   R(node) = alpha * S(semantic) + (1 - alpha) * I(graph)
- *
- * `S(semantic)` comes from an external embedding similarity map.
- * `I(graph)` is degree centrality normalised to [0,1].
- *
- * Returns { cypher, params } ready for GRAPH.QUERY.
- */
-export function buildHybridRetrievalQuery(
-  opts: HybridRetrievalOptions = {}
-): { cypher: string; params: Record<string, any> } {
-  const alpha = opts.alpha ?? 0.6;
-  const limit = opts.limit ?? 20;
-  const types = opts.types ?? [];
-
-  // Type filter clause
-  const typeFilter = types.length > 0
-    ? `WHERE n.type IN [${types.map(t => `'${t}'`).join(', ')}]`
-    : '';
-
-  // Degree centrality as graph importance proxy.
-  // FalkorDB supports SIZE(()) pattern for counting relationships.
-  const cypher = [
-    `MATCH (n:Entity)`,
-    typeFilter,
-    // Compute raw degree (in + out)
-    `OPTIONAL MATCH (n)-[r]-()`,
-    `WITH n, COUNT(r) AS degree`,
-    // Get max degree for normalisation
-    `WITH COLLECT({ node: n, degree: degree }) AS nodes,`,
-    `     MAX(degree) AS maxDegree`,
-    `UNWIND nodes AS item`,
-    `WITH item.node AS n,`,
-    `     item.degree AS degree,`,
-    `     CASE WHEN maxDegree > 0`,
-    `       THEN toFloat(item.degree) / toFloat(maxDegree)`,
-    `       ELSE 0.0`,
-    `     END AS graphImportance`,
-    // semantic_score is injected per-node via the semanticScores map at runtime;
-    // the Cypher uses a COALESCE fallback of 0.0 for nodes not in the map.
-    `WITH n, graphImportance,`,
-    `     COALESCE(n.semantic_score, 0.0) AS semanticScore,`,
-    `     ${alpha} AS alpha`,
-    `WITH n, graphImportance, semanticScore,`,
-    `     (alpha * semanticScore + (1.0 - alpha) * graphImportance) AS hybridScore`,
-    `RETURN n.id AS id, n.name AS name, n.type AS type,`,
-    `       semanticScore, graphImportance, hybridScore`,
-    `ORDER BY hybridScore DESC`,
-    `LIMIT $limit`,
-  ].join('\n');
-
-  return { cypher, params: { limit } };
-}
-
-/**
- * Apply semantic scores to nodes in-graph before running hybrid retrieval.
- * Sets a transient `semantic_score` property on matched Entity nodes.
- *
- * Usage:
- *   const graph = knowledgeGraph;
- *   await injectSemanticScores(graph, scores);
- *   const { cypher, params } = buildHybridRetrievalQuery({ alpha: 0.6, limit: 10 });
- *   // Execute cypher via graph.graphQuery(...)
- */
-export async function injectSemanticScores(
-  graph: KnowledgeGraph,
-  scores: Map<string, number>
-): Promise<void> {
-  for (const [id, score] of scores) {
-    const cypher = `MATCH (n:Entity { id: '${id}' }) SET n.semantic_score = ${score}`;
-    try {
-      await graph.rawCypherQuery(cypher);
-    } catch {
-      // Best-effort: skip nodes that don't exist
-    }
-  }
 }
 
 export const knowledgeGraph = new KnowledgeGraph();

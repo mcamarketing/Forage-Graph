@@ -239,28 +239,41 @@ app.post('/ingest', async (req: Request, res: Response) => {
 // Body: { name: string, type?: EntityType, min_confidence?: number }
 
 app.post('/query', async (req: Request, res: Response) => {
+  if (!knowledgeGraph.isReady()) {
+    res.status(503).json({ error: 'Graph database not ready — retry shortly' });
+    return;
+  }
   try {
-    const { name, type, min_confidence = 0.0 } = req.body;
-    if (!name) { res.status(400).json({ error: 'name is required' }); return; }
-
-    const entities = await knowledgeGraph.findEntity(name, type);
-    const filtered = entities.filter(e => e.confidence >= min_confidence);
-
+    const { name, type, min_confidence = 0.0, limit = 50 } = req.body;
+    let entities;
+    if (name) {
+      // Named lookup (existing behaviour)
+      entities = await knowledgeGraph.findEntity(name, type);
+    } else if (type) {
+      // Type-only listing — used by Oracle and agent collectors
+      entities = await knowledgeGraph.findEntity('', type);
+    } else {
+      res.status(400).json({ error: 'name or type is required' });
+      return;
+    }
+    const filtered = entities.filter((e: any) => e.confidence >= min_confidence);
+    const results = filtered.slice(0, Math.min(limit, 200)).map((e: any) => ({
+      id: e.id,
+      name: e.name,
+      type: e.type,
+      confidence: e.confidence,
+      call_count: e.call_count,
+      properties: e.properties,
+      sources: e.sources,
+      first_seen: e.first_seen,
+      last_seen: e.last_seen,
+    }));
     res.json({
-      query: name,
+      query: name || '',
       type: type || 'any',
-      count: filtered.length,
-      entities: filtered.slice(0, 50).map(e => ({
-        id: e.id,
-        name: e.name,
-        type: e.type,
-        confidence: e.confidence,
-        call_count: e.call_count,
-        properties: e.properties,
-        sources: e.sources,
-        first_seen: e.first_seen,
-        last_seen: e.last_seen,
-      })),
+      count: results.length,
+      entities: results,
+      nodes: results, // alias for Oracle / agent compatibility
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -513,6 +526,10 @@ app.post('/ingest/connections', async (req: Request, res: Response) => {
 // Body: { entities?: Array<...>, connections?: Array<...> }
 
 app.post('/ingest/bulk', async (req: Request, res: Response) => {
+  if (!knowledgeGraph.isReady()) {
+    res.status(503).json({ error: 'Graph database not ready — retry shortly' });
+    return;
+  }
   try {
     const { entities = [], connections = [] } = req.body;
 
@@ -718,6 +735,10 @@ app.post('/regime', async (req: Request, res: Response) => {
 // Body: { entity: string, metric: string, value: number, timestamp?: number }
 
 app.post('/signal', async (req: Request, res: Response) => {
+  if (!knowledgeGraph.isReady()) {
+    res.status(503).json({ error: 'Graph database not ready — retry shortly' });
+    return;
+  }
   try {
     const { entity, metric, value, timestamp } = req.body;
     if (!entity || !metric || value === undefined) {
@@ -1796,20 +1817,48 @@ app.post('/plan/scenarios', async (req: Request, res: Response) => {
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
+// Listen FIRST so Railway proxy always gets a response, then connect DB in background.
+// This prevents 502 errors caused by FalkorDB init failures crashing the process.
+
+async function initDbWithRetry(maxAttempts = 10, delayMs = 5000): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`[START] DB init attempt ${attempt}/${maxAttempts}...`);
+      await knowledgeGraph.init();
+      console.log('[START] FalkorDB connected successfully');
+      return true;
+    } catch (err: any) {
+      console.error(`[START] DB init attempt ${attempt} failed: ${err.message}`);
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  console.error('[START] All DB init attempts failed — running in degraded mode (503 on graph endpoints)');
+  return false;
+}
 
 async function start() {
-  await knowledgeGraph.init();
-
-  app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`Forage Reality Graph API running on port ${PORT}`);
-    console.log(`Health: http://localhost:${PORT}/health`);
-    console.log(`Features: FIBO schema, ULEM dual-hash, Hawkes contagion, Adamic-Adar prediction`);
-    console.log(`Crash Intelligence: /crash/explain, /crash/counterfactual, /regime/now, /portfolio/risk_map`);
-    console.log(`Regime-Aware: /event/explain, /plan/scenarios, /narrative/brief`);
+  // Step 1: Start HTTP server immediately so Railway health checks respond
+  await new Promise<void>(resolve => {
+    app.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`Forage Reality Graph API listening on port ${PORT}`);
+      console.log(`Health: http://localhost:${PORT}/health`);
+      resolve();
+    });
   });
+
+  // Step 2: Connect to FalkorDB in background — never crash the process
+  const dbReady = await initDbWithRetry();
+  if (!dbReady) {
+    return; // degraded mode — endpoints return 503 via isReady() checks
+  }
+
+  console.log('[START] Forage Reality Graph fully operational');
 }
 
 start().catch(err => {
-  console.error('Failed to start:', err);
+  // Only fatal if we can't even bind the port
+  console.error('[START] Fatal startup error:', err);
   process.exit(1);
 });
